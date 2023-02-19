@@ -1,0 +1,3 @@
+img/sprPenguinP.png CC-BY-SA-4.0 http://kyrodianlegends.com/license
+img/pixelperfection/* CC-BY-SA-4.0 by xssheep https://www.minecraftforum.net/forums/mapping-and-modding-java-edition/resource-packs/1242533-pixel-perfection-now-with-polar-bears-1-11
+img/player/* LOTS https://github.com/makrohn/Universal-LPC-spritesheet
