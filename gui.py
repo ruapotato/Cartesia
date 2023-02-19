@@ -371,7 +371,16 @@ def get_block_at(xy):
     global block_size
     global chunk_block_data
     
-    pos = [xy[0] + world_xy[0], xy[1] - world_xy[1]]
+    new_x = xy[0] + world_xy[0]
+    new_y = xy[1] - world_xy[1]
+    
+    #BUG fix avoid chunk edge pixel
+    if new_x%chunk_size == 0:
+        new_x = new_x + 1
+    if new_y%chunk_size == 0:
+        new_y = new_y + 1
+    
+    pos = [new_x, new_y]
     
     
     x_center_chunk = int(world_xy[0]/chunk_size)
@@ -384,8 +393,10 @@ def get_block_at(xy):
     y_with_offset = int((pos[1])/chunk_size) * -1
     if pos[1] < 0:
         y_with_offset += 1
-    chunk_index = f"{x_with_offset}_{y_with_offset}"
-    block_x = int(pos[0] % chunk_size)
+    
+    
+    block_x = pos[0] % chunk_size
+
     #block_x += int(pos[0]%chunk_size)
     block_x = int(block_x / block_size)
     
@@ -393,11 +404,13 @@ def get_block_at(xy):
     #block_y += int(pos[1]%chunk_size) * -1
     block_y = abs(int(block_y / block_size))
     
-    block_data = chunk_block_data[chunk_index]
+    
     #Add player index to chunk_index TODO
     #print(f"Left: {pos}: Chunk {chunk_index}")
     #print(f"{chunk_size} Block? {block_x} x {block_y}")
     #print(block_data[block_x][block_y])
+    chunk_index = f"{x_with_offset}_{y_with_offset}"
+    block_data = chunk_block_data[chunk_index]
     block_type = block_data[block_x][block_y]
     block_index = [block_x,block_y]
     return_data = [block_type,pos,block_index,chunk_index]
