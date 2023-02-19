@@ -1,29 +1,19 @@
 # README #
+Pixel Depth is a terrain game with the best license.
+Built in python in pygame.
 
-This README would normally document whatever steps are necessary to get your application up and running.
+### Status ###
 
-### What is this repository for? ###
+* Well, you can walk.
 
-* Quick summary
-* Version
-* [Learn Markdown](https://bitbucket.org/tutorials/markdowndemo)
+### Testing ###
 
-### How do I get set up? ###
+* sudo apt install python3-pip python3-pygame
+* sudo pip3 install perlin_noise
+* cd pixel-depth
+* ./main.py
 
-* Summary of set up
-* Configuration
-* Dependencies
-* Database configuration
-* How to run tests
-* Deployment instructions
+### License: ###
 
-### Contribution guidelines ###
-
-* Writing tests
-* Code review
-* Other guidelines
-
-### Who do I talk to? ###
-
-* Repo owner or admin
-* Other community or team contact
+* AGPL3 by David Hamner 2023
+* See Attribution.txt for other licenses for assets.
