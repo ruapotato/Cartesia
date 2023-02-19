@@ -144,7 +144,7 @@ def update_game():
     global display_txt
     global player_target
     global player_speed
-    global player_image
+    #global player_image
     global redraw_forced
     global hurt_sound
     
@@ -409,7 +409,7 @@ def main_interface():
     global selected_crop
     global small_text_font
     global background_color
-    global player_image
+    #global player_image
     global world_xy
     global game_actors
     global game_tick
@@ -438,7 +438,7 @@ def main_interface():
     max_speed = 3
     player_speed = [0,0]
     
-    player_image = pygame.image.load(f"{script_path}/img/player.png").convert()
+    #player_image = pygame.image.load(f"{script_path}/img/player.png").convert()
     dir_pos = {}
     game_actors = {}
     game_tick = 1
