@@ -21,6 +21,7 @@ gravity = -1
 
 def render_chunk(address_txt, surface):
     global small_text_font
+    global light_sources
     address = address_txt.split("_")
     address = [int(address[0]), int(address[1])]
     data = gen_chunk.get_chunk(address[0],address[1])
@@ -31,7 +32,13 @@ def render_chunk(address_txt, surface):
             block_index = data[x][y]
             if block_index in block_images:
                 img = block_images[block_index]
-
+                
+                if block_index == 5:
+                    where = [address,[draw_x, draw_y]]
+                    if address_txt in light_sources:
+                        light_sources[address_txt].append(where)
+                    else:
+                        light_sources[address_txt] = [where]
                 #new_pos = [pos[0] - int(img.get_width()/2), pos[1] - int(img.get_height()/2)]
                 surface.blit(img, [draw_x, draw_y])
                 """
@@ -92,6 +99,38 @@ def draw_NPC(images_by_path, pos, action_offset, image_buffer, img_base_path):
         #print(action_offset)
     
     draw_img(image_buffer, pos)
+
+
+def draw_lighting():
+    global light_sources
+    global chunk_size
+    global darkness
+    global light_source
+    global DEBUG
+    
+    print(f"Light me up: {light_sources}")
+    for chunk_with_lights in light_sources:
+        lights_in_this_chunk = light_sources[chunk_with_lights]
+        for light in lights_in_this_chunk:
+            address = light[0]
+            block_offset = light[1]
+            x_offset = (address[0] * chunk_size) - world_xy[0]
+
+            y_offset = (address[1] * chunk_size * -1) + world_xy[1]
+            
+            x_offset += block_offset[0]  + block_size//2 
+            y_offset += block_offset[1] + block_size//2
+            
+            #Draw in center of light
+            new_pos = [x_offset - int(light_source.get_width()/2), y_offset - int(light_source.get_height()/2)]
+            #y_offset *= -1
+            print(f"How about: {x_offset} {y_offset}")
+            darkness.blit(light_source, new_pos)
+            if DEBUG:
+                draw_img(dot, [x_offset, y_offset])
+            
+            
+    
 
 
 def draw_img(img, pos):
@@ -356,12 +395,15 @@ def draw_world():
     global chunk_surfaces
     global rendered_chunks
     global world_xy
+    global light_sources
+
     for chunk_index in rendered_chunks:
         address = chunk_index.split("_")
         address = [int(address[0]), int(address[1])]
-        surface = chunk_surfaces[chunk_index]
         x_offset = (address[0] * chunk_size) - world_xy[0]
         y_offset = (address[1] * chunk_size * -1) + world_xy[1]
+        surface = chunk_surfaces[chunk_index]
+
         gameDisplay.blit(surface, [x_offset,y_offset])
 
 #get the [block_type,pos,block_index,chunk_index] at a screen pixal
@@ -440,6 +482,9 @@ def main_interface():
     global laser_sound
     global hurt_sound
     global main_player
+    global darkness
+    global light_sources
+    global darkness_write_buffer
     
     running = True
     
@@ -535,6 +580,8 @@ def main_interface():
                     #    main_player["speed"][1] = max_speed * -1
                     #    arrow_pressed = True
         
+        #Reset lighting
+        darkness.fill((0,0,0))
         #print(f"speed: {main_player['speed']}")
         #Update worlds
         #print(f"play xy: {world_xy}")
@@ -568,12 +615,13 @@ def main_interface():
                 del rendered_chunks[rendered_chunks.index(rendered_chunk)]
                 del(chunk_block_data[rendered_chunk])
                 del(chunk_surfaces[rendered_chunk])
+                if rendered_chunk in light_sources:
+                     del(rendered_chunk[rendered_chunk])
                 
                 #TODO
                 #chunk_surfaces[rendered_chunk]
         
-        gameDisplay.fill((100,100,255))
-        draw_world()
+
         
         
         #Update NPC
@@ -587,10 +635,17 @@ def main_interface():
         #main_player["image_states"] = {"left":10, "right": 12}
         #main_player["image_state"] = "left"
         #main_player["image_frame_offset"] = 0
+        
+        
+        #Draw stuff
+        gameDisplay.fill((100,100,255))
+        draw_world()
+        
         tile_size = main_player["display_size"][0]
         action_offset = main_player["image_states"][main_player["image_state"]]
         action_offset = [main_player["image_frame_offset"] * tile_size * -1,
                          action_offset * tile_size * -1]
+        
         
         draw_NPC(main_player["images"],
                  main_player["offset"],
@@ -599,6 +654,11 @@ def main_interface():
                  main_player["image_base_path"])
         
         
+        #Lighting
+        draw_lighting()
+        darkness_write_buffer.fill((0,0,0))
+        darkness_write_buffer.blit(darkness, [0,0])
+        gameDisplay.blit(darkness_write_buffer, [0,0])
         #draw_img(player_image, player_display_pos)
         
         #Draw NPC
@@ -639,6 +699,10 @@ def init(SEED, display_scale=1, FULLSCREEN=False):
     global text_font
     global loaded_images
     global dot
+    global light_source
+    global darkness
+    global light_sources
+    global darkness_write_buffer
     
     DEBUG = True
     gen_chunk.set_seed(SEED)
@@ -658,12 +722,25 @@ def init(SEED, display_scale=1, FULLSCREEN=False):
     text_font = pygame.font.SysFont("comicsansms",fount_size)
     small_text_font = pygame.font.SysFont("comicsansms",12)
 
+    #Lighting stuff
+    darkness = pygame.Surface((display_width, display_height))
+    darkness.fill((0,0,0))
+    #darkness.set_colorkey((255,0,255))
+    darkness.set_colorkey((0,0,0))
+    light_sources = {}
+    
+    darkness_write_buffer = pygame.Surface((display_width, display_height))
+    darkness_write_buffer.fill((0,0,0))
+    darkness_write_buffer.set_colorkey((255,0,255))
+
     if FULLSCREEN:
         gameDisplay = pygame.display.set_mode((display_width,display_height), pygame.FULLSCREEN)
     else:
         gameDisplay = pygame.display.set_mode((display_width,display_height))
     
     
+    light_source = pygame.image.load(f"{script_path}/img/light4.png").convert()
+    light_source.set_colorkey((0,0,0))
     #setup block texterus
     block_images = {}
     texterus_path = f"{script_path}/img/pixelperfection"
@@ -676,6 +753,8 @@ def init(SEED, display_scale=1, FULLSCREEN=False):
     #Stone
     block_images[4] = pygame.image.load(f"{texterus_path}/default/default_stone.png").convert()
     dot = small_text_font.render(".", False, (0, 0, 0))
+    #default_torch
+    block_images[5] = pygame.image.load(f"{texterus_path}/default/default_torch.png").convert_alpha()
     
     #entities
     world_zero_offset = [(display_width//2),(display_height//2)]
