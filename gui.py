@@ -108,7 +108,7 @@ def draw_lighting():
     global light_source
     global DEBUG
     
-    print(f"Light me up: {light_sources}")
+    #print(f"Light me up: {light_sources}")
     for chunk_with_lights in light_sources:
         lights_in_this_chunk = light_sources[chunk_with_lights]
         for light in lights_in_this_chunk:
@@ -124,7 +124,7 @@ def draw_lighting():
             #Draw in center of light
             new_pos = [x_offset - int(light_source.get_width()/2), y_offset - int(light_source.get_height()/2)]
             #y_offset *= -1
-            print(f"How about: {x_offset} {y_offset}")
+            #print(f"How about: {x_offset} {y_offset}")
             darkness.blit(light_source, new_pos)
             if DEBUG:
                 draw_img(dot, [x_offset, y_offset])
@@ -459,6 +459,17 @@ def get_block_at(xy):
     return(return_data)
 
 
+def get_world_light_level():
+    global world_xy
+    global world_light
+    global world_light_hight
+    
+    world_x_with_offset = world_xy[1] - (chunk_size * 3.5)
+    min_point = world_light.get_width()//2 * -1
+    change = (min_point/world_light_hight) * world_x_with_offset
+    #light_level = min_point + (world_xy[1]//100)
+    return([0,min_point - change])
+
 def main_interface():
     #Globals needed by update_game
     global selected_crop
@@ -485,6 +496,7 @@ def main_interface():
     global darkness
     global light_sources
     global darkness_write_buffer
+    global world_light
     
     running = True
     
@@ -616,7 +628,7 @@ def main_interface():
                 del(chunk_block_data[rendered_chunk])
                 del(chunk_surfaces[rendered_chunk])
                 if rendered_chunk in light_sources:
-                     del(rendered_chunk[rendered_chunk])
+                     del(light_sources[rendered_chunk])
                 
                 #TODO
                 #chunk_surfaces[rendered_chunk]
@@ -654,11 +666,19 @@ def main_interface():
                  main_player["image_base_path"])
         
         
-        #Lighting
+
+        
+        #World lighting
+        darkness.blit(world_light, get_world_light_level())
+        #print(f"Light level: {get_world_light_level()}")
+        #Object Lighting
         draw_lighting()
         darkness_write_buffer.fill((0,0,0))
         darkness_write_buffer.blit(darkness, [0,0])
         gameDisplay.blit(darkness_write_buffer, [0,0])
+        
+            
+        
         #draw_img(player_image, player_display_pos)
         
         #Draw NPC
@@ -667,7 +687,9 @@ def main_interface():
             game_tick = 2
         else:
             game_tick = game_tick + 1
-        #print(game_tick)
+        
+        if fps > clock.get_fps() + 3:
+            print(f"Warning, low fps: {clock.get_fps()}")
         #print("Tick")
         pygame.display.update()
         clock.tick(fps)
@@ -703,11 +725,13 @@ def init(SEED, display_scale=1, FULLSCREEN=False):
     global darkness
     global light_sources
     global darkness_write_buffer
+    global world_light
+    global world_light_hight
     
     DEBUG = True
     gen_chunk.set_seed(SEED)
     
-    fps = 30
+    fps = 60
     pygame.init()
     display_info = pygame.display.Info()
 
@@ -741,6 +765,11 @@ def init(SEED, display_scale=1, FULLSCREEN=False):
     
     light_source = pygame.image.load(f"{script_path}/img/light4.png").convert()
     light_source.set_colorkey((0,0,0))
+    #Would light
+    world_light = pygame.image.load(f"{script_path}/img/world_light.png").convert()
+    world_light.set_colorkey((0,0,0))
+    world_light_hight = 1024
+    
     #setup block texterus
     block_images = {}
     texterus_path = f"{script_path}/img/pixelperfection"
@@ -755,6 +784,7 @@ def init(SEED, display_scale=1, FULLSCREEN=False):
     dot = small_text_font.render(".", False, (0, 0, 0))
     #default_torch
     block_images[5] = pygame.image.load(f"{texterus_path}/default/default_torch.png").convert_alpha()
+
     
     #entities
     world_zero_offset = [(display_width//2),(display_height//2)]
