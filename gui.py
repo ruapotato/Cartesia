@@ -6,9 +6,9 @@ import pygame
 import copy
 import os
 import gen_chunk
-
+#from pygame.locals import *
 from entities.player import *
-
+import time
 
 script_path = os.path.dirname(os.path.realpath(__file__))
 chunk_block_data = {}
@@ -101,10 +101,10 @@ def draw_NPC(images_by_path, pos, action_offset, image_buffer, img_base_path):
     draw_img(image_buffer, pos)
 
 
-def draw_lighting():
+def draw_lighting(surface, chunk_address):
     global light_sources
     global chunk_size
-    global darkness
+    #global darkness
     global light_source
     global DEBUG
     
@@ -112,6 +112,15 @@ def draw_lighting():
     for chunk_with_lights in light_sources:
         lights_in_this_chunk = light_sources[chunk_with_lights]
         for light in lights_in_this_chunk:
+            address = light[0]
+            block_offset = light[1]
+            y_offset = ((address[1] - chunk_address[1]) * chunk_size * -1)
+            x_offset = ((address[0] - chunk_address[0]) * chunk_size)
+            x_offset += block_offset[0]  + block_size//2
+            y_offset += block_offset[1] + block_size//2
+            new_pos = [x_offset - int(light_source.get_width()/2), y_offset - int(light_source.get_height()/2)]
+            surface.blit(light_source, new_pos, special_flags=pygame.BLEND_RGBA_ADD)
+            """
             address = light[0]
             block_offset = light[1]
             x_offset = (address[0] * chunk_size) - world_xy[0]
@@ -125,9 +134,11 @@ def draw_lighting():
             new_pos = [x_offset - int(light_source.get_width()/2), y_offset - int(light_source.get_height()/2)]
             #y_offset *= -1
             #print(f"How about: {x_offset} {y_offset}")
-            darkness.blit(light_source, new_pos)
+            #darkness.blit(light_source, new_pos)
+            surface.blit(light_source, new_pos, special_flags=pygame.BLEND_RGBA_ADD)
             if DEBUG:
                 draw_img(dot, [x_offset, y_offset])
+            """
             
             
     
@@ -396,7 +407,10 @@ def draw_world():
     global rendered_chunks
     global world_xy
     global light_sources
-
+    global rendered_sources
+    global game_tick
+    global fps
+    
     for chunk_index in rendered_chunks:
         address = chunk_index.split("_")
         address = [int(address[0]), int(address[1])]
@@ -404,7 +418,14 @@ def draw_world():
         y_offset = (address[1] * chunk_size * -1) + world_xy[1]
         surface = chunk_surfaces[chunk_index]
 
+        if rendered_sources != light_sources:
+            draw_lighting(surface, address)
+
         gameDisplay.blit(surface, [x_offset,y_offset])
+    
+    #Mark lights updated if we just did the lighting per chunk_index
+    if rendered_sources != light_sources:
+        rendered_sources = copy.deepcopy(light_sources)
 
 #get the [block_type,pos,block_index,chunk_index] at a screen pixal
 def get_block_at(xy):
@@ -493,9 +514,9 @@ def main_interface():
     global laser_sound
     global hurt_sound
     global main_player
-    global darkness
+    #global darkness
     global light_sources
-    global darkness_write_buffer
+    #global darkness_write_buffer
     global world_light
     
     running = True
@@ -593,7 +614,7 @@ def main_interface():
                     #    arrow_pressed = True
         
         #Reset lighting
-        darkness.fill((0,0,0))
+        #darkness.fill((0,0,0))
         #print(f"speed: {main_player['speed']}")
         #Update worlds
         #print(f"play xy: {world_xy}")
@@ -613,8 +634,8 @@ def main_interface():
         #TODO update needed_chunks based on player x y
         for needed_chunk in needed_chunks:
             if needed_chunk not in rendered_chunks:
-                chunk_surfaces[needed_chunk] = pygame.Surface((chunk_size, chunk_size))
-                chunk_surfaces[needed_chunk].fill((255,0,255))
+                chunk_surfaces[needed_chunk] = pygame.Surface((chunk_size, chunk_size),flags=pygame.SRCALPHA)
+                chunk_surfaces[needed_chunk].fill((0,0,0,0))
                 chunk_surfaces[needed_chunk].set_colorkey((255,0,255))
                 data = render_chunk(needed_chunk, chunk_surfaces[needed_chunk])
                 chunk_block_data[needed_chunk] = data
@@ -650,7 +671,9 @@ def main_interface():
         
         
         #Draw stuff
-        gameDisplay.fill((100,100,255))
+        #Sky
+        gameDisplay.fill((0,0,0,0))
+        gameDisplay.set_alpha(0)
         draw_world()
         
         tile_size = main_player["display_size"][0]
@@ -669,13 +692,13 @@ def main_interface():
 
         
         #World lighting
-        darkness.blit(world_light, get_world_light_level())
+        #darkness.blit(world_light, get_world_light_level())
         #print(f"Light level: {get_world_light_level()}")
         #Object Lighting
-        draw_lighting()
-        darkness_write_buffer.fill((0,0,0))
-        darkness_write_buffer.blit(darkness, [0,0])
-        gameDisplay.blit(darkness_write_buffer, [0,0])
+        #draw_lighting()
+        #darkness_write_buffer.fill((0,0,0))
+        #darkness_write_buffer.blit(darkness, [0,0])
+        #gameDisplay.blit(darkness, [0,0], special_flags=pygame.BLEND_ADD)
         
             
         
@@ -722,9 +745,10 @@ def init(SEED, display_scale=1, FULLSCREEN=False):
     global loaded_images
     global dot
     global light_source
-    global darkness
+    global rendered_sources
+    #global darkness
     global light_sources
-    global darkness_write_buffer
+    #global darkness_write_buffer
     global world_light
     global world_light_hight
     
@@ -747,24 +771,35 @@ def init(SEED, display_scale=1, FULLSCREEN=False):
     small_text_font = pygame.font.SysFont("comicsansms",12)
 
     #Lighting stuff
-    darkness = pygame.Surface((display_width, display_height))
-    darkness.fill((0,0,0))
-    #darkness.set_colorkey((255,0,255))
-    darkness.set_colorkey((0,0,0))
-    light_sources = {}
+    dark_block = pygame.Surface((16, 16),flags=pygame.SRCALPHA)
     
-    darkness_write_buffer = pygame.Surface((display_width, display_height))
-    darkness_write_buffer.fill((0,0,0))
-    darkness_write_buffer.set_colorkey((255,0,255))
+    dark_block.fill((0,0,0,200))
+    #darkness = pygame.Surface((display_width, display_height))
+    #darkness.fill((0,0,0))
+    #darkness.set_colorkey((255,0,255))
+    #darkness.set_colorkey((0,0,0))
+    light_sources = {}
+    rendered_sources = {}
+    
+    #darkness_write_buffer = pygame.Surface((display_width, display_height))
+    #darkness_write_buffer.fill((0,0,0))
+    #darkness_write_buffer.set_colorkey((255,0,255))
 
     if FULLSCREEN:
-        gameDisplay = pygame.display.set_mode((display_width,display_height), pygame.FULLSCREEN)
+        gameDisplay = pygame.display.set_mode((display_width,display_height), pygame.FULLSCREEN,flags=pygame.SRCALPHA)
     else:
         gameDisplay = pygame.display.set_mode((display_width,display_height))
+        #gameDisplay.set_colorkey((255,0,255))
     
     
-    light_source = pygame.image.load(f"{script_path}/img/light4.png").convert()
-    light_source.set_colorkey((0,0,0))
+    #light_source = pygame.image.load(f"{script_path}/img/light4.png").convert()
+    #light_source.set_colorkey((0,0,0))
+    
+    #light_source = pygame.Surface((200, 200),flags=pygame.SRCALPHA)
+    #light_source.fill((0,0,0,0))
+    #pygame.draw.circle(light_source, (0,0,0,255), (100, 100), 100)
+    light_source = pygame.image.load(f"{script_path}/img/light.png").convert_alpha()
+    #light_source.set_colorkey((0, 0, 0))
     #Would light
     world_light = pygame.image.load(f"{script_path}/img/world_light.png").convert()
     world_light.set_colorkey((0,0,0))
@@ -774,17 +809,27 @@ def init(SEED, display_scale=1, FULLSCREEN=False):
     block_images = {}
     texterus_path = f"{script_path}/img/pixelperfection"
     #Dirt
-    block_images[3] = pygame.image.load(f"{texterus_path}/default/default_dirt.png").convert()
+    block_images[3] = pygame.image.load(f"{texterus_path}/default/default_dirt.png").convert_alpha()
+    block_images[3].blit(dark_block, [0,0], special_flags=pygame.BLEND_RGBA_SUB)
     #Grass
     grass_top = pygame.image.load(f"{texterus_path}/default/default_grass_side.png").convert_alpha()
-    block_images[2] = pygame.image.load(f"{texterus_path}/default/default_dirt.png").convert()
+    block_images[2] = pygame.image.load(f"{texterus_path}/default/default_dirt.png").convert_alpha()
     block_images[2].blit(grass_top, [0, 0])
+    block_images[2].blit(dark_block, [0,0], special_flags=pygame.BLEND_RGBA_SUB)
+    
+    #Test grass
+    #block_images[2] = pygame.Surface((16, 16),flags=pygame.SRCALPHA)
+    #block_images[2].fill((96,123,123))
+    #block_images[2].blit(dark_block, [0,0], special_flags=pygame.BLEND_RGBA_SUB)
+    
     #Stone
-    block_images[4] = pygame.image.load(f"{texterus_path}/default/default_stone.png").convert()
-    dot = small_text_font.render(".", False, (0, 0, 0))
+    block_images[4] = pygame.image.load(f"{texterus_path}/default/default_stone.png").convert_alpha()
+    block_images[4].blit(dark_block, [0,0], special_flags=pygame.BLEND_RGBA_SUB)
+    
     #default_torch
     block_images[5] = pygame.image.load(f"{texterus_path}/default/default_torch.png").convert_alpha()
 
+    dot = small_text_font.render(".", False, (0, 0, 0))
     
     #entities
     world_zero_offset = [(display_width//2),(display_height//2)]
