@@ -33,7 +33,9 @@ def render_chunk(address_txt, surface):
             if block_index in block_images:
                 img = block_images[block_index]
                 
-                if block_index == 5:
+                #5 = torch 
+                # 2 = grass above -3 TODO change to top level air block
+                if block_index == 5 or (block_index == 2 and address[1] > -3):
                     where = [address,[draw_x, draw_y]]
                     if address_txt in light_sources:
                         light_sources[address_txt].append(where)
@@ -752,10 +754,13 @@ def init(SEED, display_scale=1, FULLSCREEN=False):
     global world_light
     global world_light_hight
     
-    DEBUG = True
+    DEBUG = False
     gen_chunk.set_seed(SEED)
     
-    fps = 60
+    fps = 30
+    #Test at hight FPS
+    if DEBUG:
+        fps = 60
     pygame.init()
     display_info = pygame.display.Info()
 
@@ -769,7 +774,7 @@ def init(SEED, display_scale=1, FULLSCREEN=False):
     fount_size = fount_size * 4
     text_font = pygame.font.SysFont("comicsansms",fount_size)
     small_text_font = pygame.font.SysFont("comicsansms",12)
-
+    sky_color = (100,100,200,255)
     #Lighting stuff
     dark_block = pygame.Surface((16, 16),flags=pygame.SRCALPHA)
     
@@ -808,6 +813,11 @@ def init(SEED, display_scale=1, FULLSCREEN=False):
     #setup block texterus
     block_images = {}
     texterus_path = f"{script_path}/img/pixelperfection"
+    
+    #Sky
+    block_images[1] = pygame.Surface((16, 16),flags=pygame.SRCALPHA)
+    block_images[1].fill(sky_color)
+    #light_source.fill((0,0,0,0))
     #Dirt
     block_images[3] = pygame.image.load(f"{texterus_path}/default/default_dirt.png").convert_alpha()
     block_images[3].blit(dark_block, [0,0], special_flags=pygame.BLEND_RGBA_SUB)
@@ -827,8 +837,10 @@ def init(SEED, display_scale=1, FULLSCREEN=False):
     block_images[4].blit(dark_block, [0,0], special_flags=pygame.BLEND_RGBA_SUB)
     
     #default_torch
-    block_images[5] = pygame.image.load(f"{texterus_path}/default/default_torch.png").convert_alpha()
-
+    tmp_toruch = pygame.image.load(f"{texterus_path}/default/default_torch.png").convert_alpha()
+    block_images[5] = pygame.Surface((16, 16),flags=pygame.SRCALPHA)
+    block_images[5].fill(sky_color)
+    block_images[5].blit(tmp_toruch, [0,0])
     dot = small_text_font.render(".", False, (0, 0, 0))
     
     #entities
