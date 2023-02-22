@@ -146,9 +146,14 @@ def draw_lighting(surface, chunk_address):
     
 
 
-def draw_img(img, pos):
+def draw_img(img, pos, target="default"):
+    
     new_pos = [pos[0] - int(img.get_width()/2), pos[1] - int(img.get_height()/2)]
-    gameDisplay.blit(img, new_pos)
+    if target == "default":
+        gameDisplay.blit(img, new_pos)
+    else:
+        target.blit(img, new_pos)
+
 
 
 #Old crap
@@ -429,6 +434,19 @@ def draw_world():
     if rendered_sources != light_sources:
         rendered_sources = copy.deepcopy(light_sources)
 
+
+def delete_block(pos,block_index,chunk_index):
+    global chunk_block_data
+    global chunk_surfaces
+    global block_images
+    global block_size
+    block_data = chunk_block_data[chunk_index]
+    block_data[block_index[0]][block_index[1]] = 1
+    surface = chunk_surfaces[chunk_index]
+    surface.blit(block_images[1], [block_index[0]*block_size,block_index[1]*block_size])
+    print(F"Deleted: {pos} {chunk_index} {block_index}")
+
+
 #get the [block_type,pos,block_index,chunk_index] at a screen pixal
 def get_block_at(xy):
     global world_xy
@@ -563,6 +581,7 @@ def main_interface():
                 if mouse_presses[0]:
                     event_pos = pygame.mouse.get_pos()
                     block_type,pos,block_index,chunk_index = get_block_at(event_pos)
+                    delete_block(pos,block_index,chunk_index)
                     print(f"Left: {pos}: Chunk {chunk_index}")
                     print(f"{block_index[0]} x {block_index[1]}")
                     print(f"type: {block_type}")
