@@ -629,8 +629,7 @@ def main_interface():
                             main_player["wanted_speed"][1] = main_player["jump_speed"] 
                             main_player["is_jumping"] = True
                             arrow_pressed = True
-                    else:
-                        main_player["wanted_speed"][1] = 0
+
                 
                     # if left arrow key is pressed
                     #if keys[pygame.K_DOWN] :

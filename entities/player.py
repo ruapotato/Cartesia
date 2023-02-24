@@ -44,7 +44,7 @@ def update_player(player_data):
     global DEBUG
     global dot
     
-    print(f"info: {player_data['is_jumping']}")
+    print(f"info: {player_data['is_climbing']}")
     x_speed_change = 0
     y_speed_change = 0
     
@@ -75,6 +75,9 @@ def update_player(player_data):
     left_foot_pos = [right_foot_pos[0]-player_data["hitbox_size"][0]/2, right_foot_pos[1]]
     left_foot_block = get_block_at(left_foot_pos)
     
+    center_foot_pos = [right_foot_pos[0]-player_data["hitbox_size"][0]/4, right_foot_pos[1]]
+    center_foot_block = get_block_at(center_foot_pos)
+    
     left_head_pos = [left_foot_pos[0] + 1,head_pos_altu]
     left_top_head_block =  get_block_at(left_head_pos)
     right_mid_pos = [right_foot_pos[0], right_foot_pos[1]-player_data["hitbox_size"][1]/2]
@@ -100,8 +103,9 @@ def update_player(player_data):
                 player_data["speed"][0] = -.2
         else:
             if not player_data["is_jumping"]:
-                player_data["speed"][1] = 2.5
-                player_data["is_climbing"] = True
+                if int(player_data["speed"][0]) < 0:
+                    player_data["speed"][1] = 2.5
+                    player_data["is_climbing"] = True
     
     #Walk up 1 block on left
     if left_knee_block[0] != 1:
@@ -111,8 +115,9 @@ def update_player(player_data):
                 player_data["speed"][0] = .2
         else:
             if  not player_data["is_jumping"]:
-                player_data["speed"][1] = 2.5
-                player_data["is_climbing"] = True
+                if int(player_data["speed"][0]) > 0:
+                    player_data["speed"][1] = 2.5
+                    player_data["is_climbing"] = True
             
     
     #Don't jump into blocks
@@ -135,11 +140,17 @@ def update_player(player_data):
     
     #print(right_mid_block)
     #print(right_knee_block)
-    if right_foot_block[0] == 1 and left_foot_block[0] == 1:
+    left = int(left_foot_block[0] == 1)
+    right = int(right_foot_block[0] == 1)
+    center = int(center_foot_block[0] == 1)
+    #Under player is air
+    if left + right + center >= 2:
         #player falling
+        print(f"Falling and climbing: {player_data['is_climbing']}")
         player_data["speed"][1] = player_data["speed"][1] + gravity
         player_data["can_jump"] = False
     else:
+        print("Not falling")
         player_data["can_jump"] = True
         if player_data["speed"][1] != 0:
             #player done falling
@@ -166,8 +177,8 @@ def update_player(player_data):
     
    
     if player_data["speed"] != [0,0]:
-        world_xy[0] += player_data["speed"][0]
-        world_xy[1] += player_data["speed"][1]
+        world_xy[0] += int(player_data["speed"][0])
+        world_xy[1] += int(player_data["speed"][1])
    #Update frame
     if player_data["player_is_walking"]:
         player_data["image_frame_offset"] += 1
