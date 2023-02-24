@@ -590,10 +590,10 @@ def main_interface():
                 if event.type == pygame.KEYUP:
                     key_name = event.key
                     if key_name == pygame.K_LEFT or key_name == pygame.K_a:
-                        main_player["speed"][0] = 0
+                        main_player["wanted_speed"][0] = 0
                         main_player["player_is_walking"] = False
                     if key_name == pygame.K_RIGHT or key_name == pygame.K_d:
-                        main_player["speed"][0] = 0
+                        main_player["wanted_speed"][0] = 0
                         main_player["player_is_walking"] = False
                  
             if event.type == pygame.KEYDOWN:
@@ -611,23 +611,26 @@ def main_interface():
                     # Move left
                     
                     if key_name == pygame.K_LEFT or key_name == pygame.K_a:
-                        main_player["speed"][0] = main_player["walk_speed"] * -1
+                        main_player["wanted_speed"][0] = main_player["walk_speed"] * -1
                         arrow_pressed = True
                         main_player["image_state"] = "left"
                         main_player["player_is_walking"] = True
                 
                     # Move right
                     if key_name == pygame.K_RIGHT or key_name == pygame.K_d:
-                        main_player["speed"][0] = main_player["walk_speed"]
+                        main_player["wanted_speed"][0] = main_player["walk_speed"]
                         arrow_pressed = True
                         main_player["image_state"] = "right"
                         main_player["player_is_walking"] = True
                 
                     # Jump
-                    if key_name == pygame.K_UP or key_name == pygame.K_w or key_name == pygame.K_SPACE:
-                        main_player["speed"][1] = main_player["jump_speed"] 
-                        main_player["is_jumping"] = True
-                        arrow_pressed = True
+                    if main_player["can_jump"]:
+                        if key_name == pygame.K_UP or key_name == pygame.K_w or key_name == pygame.K_SPACE:
+                            main_player["wanted_speed"][1] = main_player["jump_speed"] 
+                            main_player["is_jumping"] = True
+                            arrow_pressed = True
+                    else:
+                        main_player["wanted_speed"][1] = 0
                 
                     # if left arrow key is pressed
                     #if keys[pygame.K_DOWN] :

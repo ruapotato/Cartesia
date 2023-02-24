@@ -4,6 +4,7 @@ def init_player(offset):
     #player offset from would pos
     player_data["offset"] = offset
     player_data["speed"] = [0,0]
+    player_data["wanted_speed"] = [0,0]
     player_data["display_size"] = [64,64]
     player_data["hitbox_size"] = [32,64]
     
@@ -29,7 +30,7 @@ def init_player(offset):
     player_data["jump_speed"] = 12
     player_data["is_jumping"] = False
     player_data["is_climbing"] = False
-    
+    player_data["can_jump"] = True
     player_data["surface"] = pygame.Surface(player_data["display_size"])
     player_data["surface"].fill((255,0,255))
     player_data["surface"].set_colorkey((255,0,255))
@@ -42,7 +43,25 @@ def update_player(player_data):
     global gravity
     global DEBUG
     global dot
-
+    
+    print(f"info: {player_data['is_jumping']}")
+    x_speed_change = 0
+    y_speed_change = 0
+    
+    if not player_data["can_jump"]:
+        player_data["wanted_speed"][1] = 0
+    if player_data["wanted_speed"][0] != player_data["speed"][0]:
+        diff = player_data["speed"][0] + player_data["wanted_speed"][0] 
+        x_speed_change = diff/2
+    if player_data["wanted_speed"][1] != player_data["speed"][1]:
+        if player_data["wanted_speed"][1] == 0:
+            y_speed_change = player_data["speed"][1]
+        else:
+            diff = player_data["speed"][1] + player_data["wanted_speed"][1] 
+            y_speed_change = diff/2
+    player_data["speed"] = [x_speed_change, y_speed_change]
+    print(player_data["speed"])
+    
     head_pos_altu = player_data["offset"][1] - player_data["hitbox_size"][0]//4 - 15
     
     right_foot_pos_altr = player_data["offset"][0] + player_data["hitbox_size"][0]//4
@@ -50,13 +69,13 @@ def update_player(player_data):
     right_foot_pos = [right_foot_pos_altr, right_foot_pos_altu]
     right_foot_block = get_block_at(right_foot_pos)
     
-    right_head_pos = [right_foot_pos[0], head_pos_altu]
+    right_head_pos = [right_foot_pos[0] - 1, head_pos_altu]
     right_top_head_block =  get_block_at(right_head_pos)
     
     left_foot_pos = [right_foot_pos[0]-player_data["hitbox_size"][0]/2, right_foot_pos[1]]
     left_foot_block = get_block_at(left_foot_pos)
     
-    left_head_pos = [left_foot_pos[0],head_pos_altu]
+    left_head_pos = [left_foot_pos[0] + 1,head_pos_altu]
     left_top_head_block =  get_block_at(left_head_pos)
     right_mid_pos = [right_foot_pos[0], right_foot_pos[1]-player_data["hitbox_size"][1]/2]
     right_mid_block = get_block_at(right_mid_pos)
@@ -78,9 +97,9 @@ def update_player(player_data):
         if right_mid_block[0] != 1:
             if player_data["speed"][0] > 0:
                 print("Block")
-                player_data["speed"][0] = -.1
+                player_data["speed"][0] = -.2
         else:
-            if  not player_data["is_jumping"]:
+            if not player_data["is_jumping"]:
                 player_data["speed"][1] = 2.5
                 player_data["is_climbing"] = True
     
@@ -89,7 +108,7 @@ def update_player(player_data):
         if left_mid_block[0] != 1:
             if player_data["speed"][0] < 0:
                 print("Block")
-                player_data["speed"][0] = .1
+                player_data["speed"][0] = .2
         else:
             if  not player_data["is_jumping"]:
                 player_data["speed"][1] = 2.5
@@ -99,6 +118,7 @@ def update_player(player_data):
     #Don't jump into blocks
     if left_top_head_block[0] != 1 or right_top_head_block[0] != 1:
          player_data["speed"][1] = -.1
+         player_data["is_jumping"] = False
          print("Owhh my head")
         
 
@@ -118,8 +138,9 @@ def update_player(player_data):
     if right_foot_block[0] == 1 and left_foot_block[0] == 1:
         #player falling
         player_data["speed"][1] = player_data["speed"][1] + gravity
-    
+        player_data["can_jump"] = False
     else:
+        player_data["can_jump"] = True
         if player_data["speed"][1] != 0:
             #player done falling
             damage = player_data["speed"][1]//10
@@ -141,6 +162,7 @@ def update_player(player_data):
                     print(f"set to: {world_xy[1]}")
                     player_data["speed"][1] = 0
                     print(f"TODO: Player damaged: {damage}")
+                    
     
    
     if player_data["speed"] != [0,0]:
