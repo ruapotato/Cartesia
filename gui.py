@@ -676,6 +676,11 @@ def main_interface():
                 #chunk_surfaces[rendered_chunk]
         
 
+        #Draw stuff
+        #Sky
+        gameDisplay.fill((0,0,0,0))
+        gameDisplay.set_alpha(0)
+        draw_world()
         
         
         #Update NPC
@@ -691,12 +696,7 @@ def main_interface():
         #main_player["image_frame_offset"] = 0
         
         
-        #Draw stuff
-        #Sky
-        gameDisplay.fill((0,0,0,0))
-        gameDisplay.set_alpha(0)
-        draw_world()
-        
+
         tile_size = main_player["display_size"][0]
         action_offset = main_player["image_states"][main_player["image_state"]]
         action_offset = [main_player["image_frame_offset"] * tile_size * -1,
@@ -704,10 +704,10 @@ def main_interface():
         
         
         draw_NPC(main_player["images"],
-                 main_player["offset"],
-                 action_offset,
-                 main_player["surface"],
-                 main_player["image_base_path"])
+                main_player["offset"],
+                action_offset,
+                main_player["surface"],
+                main_player["image_base_path"])
         
         
 
@@ -773,7 +773,7 @@ def init(SEED, display_scale=1, FULLSCREEN=False):
     global world_light
     global world_light_hight
     
-    DEBUG = False
+    DEBUG = True
     gen_chunk.set_seed(SEED)
     
     fps = 30
@@ -860,7 +860,12 @@ def init(SEED, display_scale=1, FULLSCREEN=False):
     block_images[5] = pygame.Surface((16, 16),flags=pygame.SRCALPHA)
     block_images[5].fill(sky_color)
     block_images[5].blit(tmp_toruch, [0,0])
-    dot = small_text_font.render(".", False, (0, 0, 0))
+    #dot = small_text_font.render(".", False, (0, 0, 0))
+    
+    
+    dot = pygame.Surface((20, 20),flags=pygame.SRCALPHA)
+    dot.fill((0,0,0,0))
+    pygame.draw.circle(dot, (255,0,255,255), (10, 10), 10)
     
     #entities
     world_zero_offset = [(display_width//2),(display_height//2)]

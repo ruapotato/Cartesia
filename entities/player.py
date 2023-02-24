@@ -43,15 +43,21 @@ def update_player(player_data):
     global DEBUG
     global dot
 
+    head_pos_altu = player_data["offset"][1] - player_data["hitbox_size"][0]//4 - 15
     
     right_foot_pos_altr = player_data["offset"][0] + player_data["hitbox_size"][0]//4
     right_foot_pos_altu = player_data["offset"][1] + player_data["hitbox_size"][1]//2
     right_foot_pos = [right_foot_pos_altr, right_foot_pos_altu]
     right_foot_block = get_block_at(right_foot_pos)
     
+    right_head_pos = [right_foot_pos[0], head_pos_altu]
+    right_top_head_block =  get_block_at(right_head_pos)
+    
     left_foot_pos = [right_foot_pos[0]-player_data["hitbox_size"][0]/2, right_foot_pos[1]]
     left_foot_block = get_block_at(left_foot_pos)
     
+    left_head_pos = [left_foot_pos[0],head_pos_altu]
+    left_top_head_block =  get_block_at(left_head_pos)
     right_mid_pos = [right_foot_pos[0], right_foot_pos[1]-player_data["hitbox_size"][1]/2]
     right_mid_block = get_block_at(right_mid_pos)
     right_knee_pos = [right_foot_pos[0], right_foot_pos[1]-player_data["hitbox_size"][1]/8]
@@ -72,7 +78,7 @@ def update_player(player_data):
         if right_mid_block[0] != 1:
             if player_data["speed"][0] > 0:
                 print("Block")
-                player_data["speed"][0] = 0
+                player_data["speed"][0] = -.1
         else:
             if  not player_data["is_jumping"]:
                 player_data["speed"][1] = 2.5
@@ -83,14 +89,18 @@ def update_player(player_data):
         if left_mid_block[0] != 1:
             if player_data["speed"][0] < 0:
                 print("Block")
-                player_data["speed"][0] = 0
+                player_data["speed"][0] = .1
         else:
             if  not player_data["is_jumping"]:
                 player_data["speed"][1] = 2.5
                 player_data["is_climbing"] = True
             
     
-    
+    #Don't jump into blocks
+    if left_top_head_block[0] != 1 or right_top_head_block[0] != 1:
+         player_data["speed"][1] = -.1
+         print("Owhh my head")
+        
 
     
     if DEBUG:
@@ -100,6 +110,8 @@ def update_player(player_data):
         draw_img(dot, right_mid_pos)
         draw_img(dot, left_knee_pos)
         draw_img(dot, left_mid_pos)
+        draw_img(dot, left_head_pos)
+        draw_img(dot, right_head_pos)
     
     #print(right_mid_block)
     #print(right_knee_block)
