@@ -44,10 +44,12 @@ def update_player(player_data):
     global DEBUG
     global dot
     
-    print(f"info: {player_data['is_climbing']}")
+    #print(f"info: {player_data['is_climbing']}")
     x_speed_change = 0
     y_speed_change = 0
     
+    
+    #Adjust player speed to wanted_speed slowly
     if not player_data["can_jump"]:
         player_data["wanted_speed"][1] = 0
     if player_data["wanted_speed"][0] != player_data["speed"][0]:
@@ -60,122 +62,34 @@ def update_player(player_data):
             diff = player_data["speed"][1] + player_data["wanted_speed"][1] 
             y_speed_change = diff/2
     player_data["speed"] = [x_speed_change, y_speed_change]
-    print(player_data["speed"])
+    #print(player_data["speed"])
     
-    head_pos_altu = player_data["offset"][1] - player_data["hitbox_size"][0]//4 - 15
     
-    right_foot_pos_altr = player_data["offset"][0] + player_data["hitbox_size"][0]//4
-    right_foot_pos_altu = player_data["offset"][1] + player_data["hitbox_size"][1]//2
-    right_foot_pos = [right_foot_pos_altr, right_foot_pos_altu]
-    right_foot_block = get_block_at(right_foot_pos)
+    pos = copy.deepcopy(player_data["offset"])
+    hitbox_size = player_data["hitbox_size"]
+    current_speed = player_data["speed"]
+    is_climbing = player_data["is_climbing"]
+    can_jump = player_data["can_jump"]
+    is_jumping = player_data["is_jumping"]
     
-    right_head_pos = [right_foot_pos[0] - 1, head_pos_altu]
-    right_top_head_block =  get_block_at(right_head_pos)
+    #Block hit checking
+    pos_change, newSpeed, is_climbing, can_jump, is_jumping, damage = environmentSpeedChange(pos,
+                                                                                             hitbox_size,
+                                                                                             current_speed,
+                                                                                             is_climbing,
+                                                                                             can_jump,
+                                                                                             is_jumping)
+    if pos_change != player_data["offset"]:
+        world_xy[1] += player_data["offset"][1] - pos_change[1]
+        world_xy[0] += player_data["offset"][0] - pos_change[0]
     
-    left_foot_pos = [right_foot_pos[0]-player_data["hitbox_size"][0]/2, right_foot_pos[1]]
-    left_foot_block = get_block_at(left_foot_pos)
-    
-    center_foot_pos = [right_foot_pos[0]-player_data["hitbox_size"][0]/4, right_foot_pos[1]]
-    center_foot_block = get_block_at(center_foot_pos)
-    
-    left_head_pos = [left_foot_pos[0] + 1,head_pos_altu]
-    left_top_head_block =  get_block_at(left_head_pos)
-    right_mid_pos = [right_foot_pos[0], right_foot_pos[1]-player_data["hitbox_size"][1]/2]
-    right_mid_block = get_block_at(right_mid_pos)
-    right_knee_pos = [right_foot_pos[0], right_foot_pos[1]-player_data["hitbox_size"][1]/8]
-    right_knee_block = get_block_at(right_knee_pos)
-    
-    left_mid_pos = [right_mid_pos[0]-player_data["hitbox_size"][1]/4, right_mid_pos[1]]
-    left_mid_block = get_block_at(left_mid_pos)
-    left_knee_pos = [right_knee_pos[0]-player_data["hitbox_size"][1]/4, right_knee_pos[1]]
-    left_knee_block = get_block_at(left_knee_pos)
-    
-    if player_data["speed"][1] < 0:
-        print("Not jumpping")
-        player_data["is_jumping"] = False
-    
-    #Walk up 1 block on right
-    player_data["is_climbing"] = False
-    if right_knee_block[0] != 1:
-        if right_mid_block[0] != 1:
-            if player_data["speed"][0] > 0:
-                print("Block")
-                player_data["speed"][0] = -.2
-        else:
-            if not player_data["is_jumping"]:
-                if int(player_data["speed"][0]) < 0:
-                    player_data["speed"][1] = 2.5
-                    player_data["is_climbing"] = True
-    
-    #Walk up 1 block on left
-    if left_knee_block[0] != 1:
-        if left_mid_block[0] != 1:
-            if player_data["speed"][0] < 0:
-                print("Block")
-                player_data["speed"][0] = .2
-        else:
-            if  not player_data["is_jumping"]:
-                if int(player_data["speed"][0]) > 0:
-                    player_data["speed"][1] = 2.5
-                    player_data["is_climbing"] = True
-            
-    
-    #Don't jump into blocks
-    if left_top_head_block[0] != 1 or right_top_head_block[0] != 1:
-         player_data["speed"][1] = -.1
-         player_data["is_jumping"] = False
-         print("Owhh my head")
-        
-
-    
-    if DEBUG:
-        draw_img(dot, left_foot_pos)
-        draw_img(dot, right_foot_pos)
-        draw_img(dot, right_knee_pos)
-        draw_img(dot, right_mid_pos)
-        draw_img(dot, left_knee_pos)
-        draw_img(dot, left_mid_pos)
-        draw_img(dot, left_head_pos)
-        draw_img(dot, right_head_pos)
-    
-    #print(right_mid_block)
-    #print(right_knee_block)
-    left = int(left_foot_block[0] == 1)
-    right = int(right_foot_block[0] == 1)
-    center = int(center_foot_block[0] == 1)
-    #Under player is air
-    if left + right + center >= 2:
-        #player falling
-        print(f"Falling and climbing: {player_data['is_climbing']}")
-        player_data["speed"][1] = player_data["speed"][1] + gravity
-        player_data["can_jump"] = False
-    else:
-        print("Not falling")
-        player_data["can_jump"] = True
-        if player_data["speed"][1] != 0:
-            #player done falling
-            damage = player_data["speed"][1]//10
-            
-            #Snap to block
-            
-            #hit_at = (right_foot_block[1][1] // block_size) * block_size
-            #print(right_foot_block)
-            #print(f"HIT foot pos: {right_foot_block[1][1]} \n Block {hit_at} \nwould: {world_xy[1] }")
-            #world_xy[1] = hit_at
-            if not player_data["is_climbing"]:
-                if not player_data["is_jumping"]:
-                    print(f"Was: {world_xy[1]}")
-                    new_block_level = (((world_xy[1] + player_data["speed"][1] + 6) // block_size) * block_size)
-                    new_block_level += 6
-                    print(f"info: {new_block_level}")
-                    #world_xy[1] += 1
-                    world_xy[1] = new_block_level
-                    print(f"set to: {world_xy[1]}")
-                    player_data["speed"][1] = 0
-                    print(f"TODO: Player damaged: {damage}")
+    player_data["speed"] = newSpeed
+    player_data["is_climbing"] = is_climbing
+    player_data["can_jump"] = can_jump
+    player_data["is_jumping"] = is_jumping
                     
     
-   
+    #add speed to player (In this case edit the world_xy)
     if player_data["speed"] != [0,0]:
         world_xy[0] += int(player_data["speed"][0])
         world_xy[1] += int(player_data["speed"][1])
