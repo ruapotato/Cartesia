@@ -1,16 +1,17 @@
 # README #
-Pixel Depth is a terrain game with the best license.
+Cartesia is a terrain game with the best license.
 Built in python in pygame.
 
 ### Status ###
 
 * Well, you can walk.
+* And dig, kinda
 
 ### Testing ###
 
 * sudo apt install python3-pip python3-pygame
 * sudo pip3 install perlin_noise
-* cd pixel-depth
+* cd cartesia 
 * ./main.py
 
 ### License: ###
