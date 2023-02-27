@@ -8,7 +8,7 @@ def init_player(offset):
     player_data["wanted_speed"] = [0,0]
     player_data["display_size"] = [64,64]
     player_data["hitbox_size"] = [32,64]
-    player_data["active_item"] = init_pickaxe(offset, 1, 5)
+    player_data["active_item"] = init_pickaxe(copy.deepcopy(offset), 1, 5)
     
     
     player_images = {"body": "/body/male/light",
@@ -102,5 +102,6 @@ def update_player(player_data):
     
     # Update ative active_item
     if player_data["active_item"] != None:
+        player_data["active_item"]["facing"] = player_data["image_state"]
         player_data["active_item"]["update"](player_data["active_item"])
         

@@ -1,7 +1,7 @@
 #AGPL by David Hamner 2023
 
 def update_pickaxe(pickaxe_data):
-    global block_mine_type
+    global gameDisplay
     mouse_presses = pygame.mouse.get_pressed()
     if mouse_presses[0]:
         event_pos = pygame.mouse.get_pos()
@@ -30,13 +30,30 @@ def update_pickaxe(pickaxe_data):
         pickaxe_data["blocked_minded_amount"] = 0
         pickaxe_data["active"]
 
-
+    #draw
+    if pickaxe_data["active"]:
+        frame = pickaxe_data["image_frame_offset"] % 20
+        img = pickaxe_data["img"]
+        angle = frame * 2
+        
+        if pickaxe_data["facing"] == "left":
+            offset = [pickaxe_data["offset"][0] - block_size, pickaxe_data["offset"][1]]
+            draw_img(pygame.transform.rotate(pygame.transform.flip(img,1,0), angle), offset)
+            #draw_img(img, offset)
+        else:
+            offset = [pickaxe_data["offset"][0] + block_size, pickaxe_data["offset"][1]]
+        
+            draw_img(pygame.transform.rotate(img, angle), offset)
+        #gameDisplay.blit(img, offset)
+        
 
 
 
 def init_pickaxe(offset, speed, pick_range):
     pickaxe_data = {}
     #pickaxe offset from would pos
+    texterus_path = f"{script_path}/img/pixelperfection"
+    pickaxe_data["img"] = pygame.image.load(f"{texterus_path}/default/default_tool_woodpick.png").convert_alpha()
     pickaxe_data["offset"] = offset
     pickaxe_data["speed"] = speed
     pickaxe_data["active"] = False
@@ -44,6 +61,7 @@ def init_pickaxe(offset, speed, pick_range):
     pickaxe_data["image_frame_offset"] = 0
     pickaxe_data["target"] = None
     pickaxe_data["range"] = pick_range
+    pickaxe_data["facing"] = "left"
     pickaxe_data["block_mine_type"] = {2:10, 
                                        3:10,
                                        4:40}
