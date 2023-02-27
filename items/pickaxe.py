@@ -8,11 +8,15 @@ def update_pickaxe(pickaxe_data):
         block_type,pos,block_index,chunk_index = get_block_at(event_pos)
         
         #TODO check dist
-        pickaxe_data["active"] = True
+        if block_type == 1:
+            pickaxe_data["active"] = False
+        else:
+            pickaxe_data["active"] = True
         
         #Reset mine if block changes
-        if pickaxe_data["target"] != (block_index,chunk_index):
+        if pickaxe_data["target"] != (block_index,chunk_index) or block_type == 1:
             pickaxe_data["blocked_minded_amount"] = 0
+            pickaxe_data["image_frame_offset"] = 0
             pickaxe_data["target"] = (block_index,chunk_index)
         
         if pickaxe_data["active"]:
@@ -28,22 +32,27 @@ def update_pickaxe(pickaxe_data):
                 print(f"type: {block_type}")
     else:
         pickaxe_data["blocked_minded_amount"] = 0
+        pickaxe_data["image_frame_offset"] = 0
         pickaxe_data["active"]
 
     #draw
+    frame = pickaxe_data["image_frame_offset"] % 15
+    img = pickaxe_data["img"]
     if pickaxe_data["active"]:
-        frame = pickaxe_data["image_frame_offset"] % 20
-        img = pickaxe_data["img"]
-        angle = frame * 2
+        angle = frame * 4
+    else:
+        angle = 0
+
         
-        if pickaxe_data["facing"] == "left":
-            offset = [pickaxe_data["offset"][0] - block_size, pickaxe_data["offset"][1]]
-            draw_img(pygame.transform.rotate(pygame.transform.flip(img,1,0), angle), offset)
-            #draw_img(img, offset)
-        else:
-            offset = [pickaxe_data["offset"][0] + block_size, pickaxe_data["offset"][1]]
-        
-            draw_img(pygame.transform.rotate(img, angle), offset)
+    print(angle)
+    if pickaxe_data["facing"] == "left":
+        offset = [pickaxe_data["offset"][0] - block_size, pickaxe_data["offset"][1]]
+        draw_img(pygame.transform.rotate(pygame.transform.flip(img,1,0), angle), offset)
+        #draw_img(img, offset)
+    else:
+        offset = [pickaxe_data["offset"][0] + block_size, pickaxe_data["offset"][1]]
+    
+        draw_img(pygame.transform.rotate(img, angle), offset)
         #gameDisplay.blit(img, offset)
         
 
