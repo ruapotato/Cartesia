@@ -1,3 +1,4 @@
+#AGPL by David Hamner 2023
 #Flat obj like, imported into gui.py for native functions calls. 
 def init_player(offset):
     player_data = {}
@@ -7,6 +8,7 @@ def init_player(offset):
     player_data["wanted_speed"] = [0,0]
     player_data["display_size"] = [64,64]
     player_data["hitbox_size"] = [32,64]
+    player_data["active_item"] = init_pickaxe(offset, 1, 5)
     
     
     player_images = {"body": "/body/male/light",
@@ -98,5 +100,7 @@ def update_player(player_data):
         player_data["image_frame_offset"] += 1
         player_data["image_frame_offset"] %= 9
     
-    
+    # Update ative active_item
+    if player_data["active_item"] != None:
+        player_data["active_item"]["update"](player_data["active_item"])
         

@@ -1,14 +1,17 @@
 #!/usr/bin/python3
 
 #AGPL by David Hamner 2023
-
+import time
 import pygame
 import copy
 import os
 import gen_chunk
 #from pygame.locals import *
-from entities.player import *
-import time
+#from entities.player import *
+#from items.pickaxe import *
+
+
+
 
 script_path = os.path.dirname(os.path.realpath(__file__))
 chunk_block_data = {}
@@ -18,6 +21,8 @@ block_size = 16
 chunk_blocks = 32
 chunk_size = block_size * chunk_blocks
 gravity = -1
+
+
 
 def render_chunk(address_txt, surface):
     global small_text_font
@@ -690,7 +695,7 @@ def main_interface():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 quit()
-            
+            """
             #Handel mouse press
             if event.type == pygame.MOUSEBUTTONDOWN:
                 mouse_presses = pygame.mouse.get_pressed()
@@ -701,6 +706,7 @@ def main_interface():
                     print(f"Left: {pos}: Chunk {chunk_index}")
                     print(f"{block_index[0]} x {block_index[1]}")
                     print(f"type: {block_type}")
+            """
             #Handel Key press
             if not pre_game:
                 if event.type == pygame.KEYUP:
@@ -861,6 +867,15 @@ def main_interface():
 for entry in os.scandir('entities'):
     if entry.is_file():
         path = f"{script_path}/entities/{entry.name}"
+        print(path)
+        with open(path) as fh:
+            python_script = fh.readlines()
+        python_script = "\n".join(python_script)
+        exec(python_script)
+#Load into this namespace all needed items
+for entry in os.scandir('items'):
+    if entry.is_file():
+        path = f"{script_path}/items/{entry.name}"
         print(path)
         with open(path) as fh:
             python_script = fh.readlines()
