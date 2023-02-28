@@ -33,26 +33,28 @@ def update_pickaxe(pickaxe_data):
     else:
         pickaxe_data["blocked_minded_amount"] = 0
         pickaxe_data["image_frame_offset"] = 0
-        pickaxe_data["active"]
+        pickaxe_data["active"] = False
 
     #draw
     frame = pickaxe_data["image_frame_offset"] % 15
     img = pickaxe_data["img"]
     if pickaxe_data["active"]:
-        angle = frame * 4
+        angle =  frame * -8
+        #angle = game_tick % 360
     else:
         angle = 0
 
         
     print(angle)
     if pickaxe_data["facing"] == "left":
-        offset = [pickaxe_data["offset"][0] - block_size, pickaxe_data["offset"][1]]
-        draw_img(pygame.transform.rotate(pygame.transform.flip(img,1,0), angle), offset)
+        offset = [pickaxe_data["offset"][0] - 5, pickaxe_data["offset"][1] + 5]
+        draw_img(img, offset, angle=angle, flip=True)
+        #draw_img(pygame.transform.rotate(pygame.transform.flip(img,1,0), angle), offset)
         #draw_img(img, offset)
     else:
-        offset = [pickaxe_data["offset"][0] + block_size, pickaxe_data["offset"][1]]
-    
-        draw_img(pygame.transform.rotate(img, angle), offset)
+        offset = [pickaxe_data["offset"][0] + 5, pickaxe_data["offset"][1] + 5]
+        draw_img(img, offset, angle=angle, flip=False)
+        #draw_img(pygame.transform.rotate(img, angle), offset)
         #gameDisplay.blit(img, offset)
         
 
@@ -62,7 +64,7 @@ def init_pickaxe(offset, speed, pick_range):
     pickaxe_data = {}
     #pickaxe offset from would pos
     texterus_path = f"{script_path}/img/pixelperfection"
-    pickaxe_data["img"] = pygame.image.load(f"{texterus_path}/default/default_tool_woodpick.png").convert_alpha()
+    pickaxe_data["img"] = f"{texterus_path}/default/default_tool_woodpick.png"
     pickaxe_data["offset"] = offset
     pickaxe_data["speed"] = speed
     pickaxe_data["active"] = False

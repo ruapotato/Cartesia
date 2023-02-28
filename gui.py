@@ -267,7 +267,33 @@ def draw_lighting(surface, chunk_address):
     
 
 
-def draw_img(img, pos, target="default"):
+def draw_img(img, pos, target="default", angle=None, flip=False):
+    
+    #Support strings as image input
+    if type(img) == str:
+        if img not in loaded_images:
+            loaded_images[img] = pygame.image.load(img).convert_alpha()
+        img = loaded_images[img]
+    
+    w, h = img.get_size()
+    #TODO reuse tmp_surface, or clean or remove it up somehow.
+    if flip:
+        x = w
+        y = 1
+        tmp_surface = pygame.Surface((w*2, h*2), pygame.SRCALPHA)
+        tmp_surface.blit(img, (x, y))
+        img = pygame.transform.rotate(tmp_surface, angle)
+        img = pygame.transform.flip(img, 1,0)
+        #img = pygame.transform.flip(img,1,0)
+        #pos = [pos[0] +  angle//6, pos[1] - img.get_height()//2 - angle//6]
+    elif angle != None:
+        x = w
+        y = 1
+        tmp_surface = pygame.Surface((w*2, h*2), pygame.SRCALPHA)
+        tmp_surface.blit(img, (x, y))
+        img = pygame.transform.rotate(tmp_surface, angle)
+        #img = pygame.transform.rotate(img, angle)
+        #pos = [pos[0] -  angle//6, pos[1] - int(img.get_height()/2) + angle//6]
     
     new_pos = [pos[0] - int(img.get_width()/2), pos[1] - int(img.get_height()/2)]
     if target == "default":
