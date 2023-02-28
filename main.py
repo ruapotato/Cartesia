@@ -7,7 +7,7 @@
 import gui
 
 SEED = 1564654
-gui.init(SEED)
+gui.init(SEED, display_scale=1.5, FULLSCREEN=True)
 #import matplotlib.pyplot as plt
 
 """

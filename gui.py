@@ -969,7 +969,7 @@ def init(SEED, display_scale=1, FULLSCREEN=False):
     #darkness_write_buffer.set_colorkey((255,0,255))
 
     if FULLSCREEN:
-        gameDisplay = pygame.display.set_mode((display_width,display_height), pygame.FULLSCREEN,flags=pygame.SRCALPHA)
+        gameDisplay = pygame.display.set_mode((display_width,display_height), pygame.FULLSCREEN)
     else:
         gameDisplay = pygame.display.set_mode((display_width,display_height))
         #gameDisplay.set_colorkey((255,0,255))
