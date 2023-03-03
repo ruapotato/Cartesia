@@ -45,7 +45,7 @@ def update_pickaxe(pickaxe_data):
         angle = 0
 
         
-    print(angle)
+    #print(angle)
     if pickaxe_data["facing"] == "left":
         offset = [pickaxe_data["offset"][0] - 5, pickaxe_data["offset"][1] + 5]
         draw_img(img, offset, angle=angle, flip=True)

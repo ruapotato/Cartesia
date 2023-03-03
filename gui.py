@@ -94,36 +94,41 @@ def environmentSpeedChange(pos, hitbox_size, current_speed, is_climbing, can_jum
     left_knee_block = get_block_at(left_knee_pos)
     
     if current_speed[1] < 0:
-        print("Not jumpping")
+        #print("Not jumpping")
         is_jumping = False
     
+    blocked_on = {"head": False,
+                  "right": False,
+                  "left": False}
     #Walk up 1 block on right
     is_climbing = False
     if right_knee_block[0] != 1:
         if right_mid_block[0] != 1:
             if current_speed[0] > 0:
-                print("Block on right")
+                #print("Block on right")
+                blocked_on["right"] = True
                 current_speed[0] = -.2
         else:
             if not is_jumping:
                 if int(current_speed[0]) > 0:
-                    print("climbing right")
+                    #print("climbing right")
                     #current_speed[1] = 2.5
-                    pos[1] -= 4
+                    pos[1] -= 5
                     is_climbing = True
     
     #Walk up 1 block on left
     if left_knee_block[0] != 1:
         if left_mid_block[0] != 1:
             if current_speed[0] < 0:
-                print("Block on left")
+                #print("Block on left")
+                blocked_on["left"] = True
                 current_speed[0] = .2
         else:
             if  not is_jumping:
                 if int(current_speed[0]) < 0:
-                    print("climbing left")
+                    #print("climbing left")
                     #current_speed[1] = 2.5
-                    pos[1] -= 4
+                    pos[1] -= 5
                     is_climbing = True
             
     
@@ -131,13 +136,15 @@ def environmentSpeedChange(pos, hitbox_size, current_speed, is_climbing, can_jum
     if left_top_head_block[0] != 1 or right_top_head_block[0] != 1:
          current_speed[1] = -.1
          is_jumping = False
-         print("Owhh my head")
+         #print("Owhh my head")
+         blocked_on["head"] = True
     
     if DEBUG:
+        pass
         #draw_img(dot, left_foot_pos)
-        draw_img(dot, right_foot_pos)
-        draw_img(dot, right_knee_pos)
-        draw_img(dot, right_mid_pos)
+        #draw_img(dot, right_foot_pos)
+        #draw_img(dot, right_knee_pos)
+        #draw_img(dot, right_mid_pos)
         #draw_img(dot, left_knee_pos)
         #draw_img(dot, left_mid_pos)
         #draw_img(dot, left_head_pos)
@@ -150,11 +157,12 @@ def environmentSpeedChange(pos, hitbox_size, current_speed, is_climbing, can_jum
     #Under player is air
     if left + right + center >= 2:
         #player falling
-        print(f"Falling and climbing: {is_climbing}")
+        #print(f"Falling and climbing: {is_climbing}")
         current_speed[1] = current_speed[1] + gravity
         can_jump = False
     else:
         #print("Not falling")
+        #not blocked_on["head"] and not blocked_on["left"] and not blocked_on["right"]:
         can_jump = True
         if current_speed[1] != 0:
             #player done falling
@@ -166,14 +174,47 @@ def environmentSpeedChange(pos, hitbox_size, current_speed, is_climbing, can_jum
             if not is_climbing:
                 if not is_jumping:
                     print(f"Was: {pos[1]}")
-                    new_block_level = (((pos[1] + current_speed[1] + block_size - 4) // block_size) * block_size)
-                    new_block_level -= 4
-                    print(f"info: {new_block_level}")
-                    #pos[1] += 1
-                    pos[1] = new_block_level
-                    print(f"set to: {pos[1]}")
+                    print(f"SPEED: {current_speed}")
+                    # 720 * x = 4
+                    # 360 * x = 8
+                    # height magic crap
+                    #TODO replace Use block size and offset image size
+                    #This is broken for some chunks
+                    
+                    last_fram_center_foot_pos = [center_foot_pos[0]-current_speed[0]//2, center_foot_pos[1] + current_speed[1]//2]
+                    ground_block = get_block_at(last_fram_center_foot_pos)
+                    block_type = ground_block[0]
+                    block_pos = ground_block[1]
+                    block_index = ground_block[2]
+                    chunk_index  = ground_block[3].split("_")
+                    chunk_index = [int(chunk_index[0]), int(chunk_index[1])]
+
+                    new_x = (block_index[0] * block_size) + (chunk_index[0] * chunk_blocks * block_size)
+                    new_x -= world_xy[0]
+                    #new_y = (block_index[1] * block_size) + (chunk_index[1] * chunk_size)
+                    new_y = (block_index[1] * block_size) - (chunk_index[1] * chunk_blocks * block_size)
+                    new_y += world_xy[1]
+                    
+                    if DEBUG:
+                        gameDisplay.blit(dot, [new_x,new_y])
+                    
+                    # Ajust for image size
+                    new_y -= hitbox_size[1]//2
+                    #new_y -= 3
+                    
+                    # Ajust for speed
+                    #new_y += (//block_size) * block_size
                     current_speed[1] = 0
-                    print(f"TODO: Player damaged: {damage}")
+                    
+                    new_pos = [new_x, new_y]
+                    
+                    print(f"chunk: {chunk_index}")
+                    print(f"Block: {block_index}")
+                    print(new_pos)
+                    #pos[1] += 1
+                    pos[1] = new_pos[1] 
+                    print(f"set to: {pos[1]}")
+
     return((pos, current_speed, is_climbing, can_jump, is_jumping, damage))
 
 #Used for moving along a line at a speed
