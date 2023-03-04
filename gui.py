@@ -102,6 +102,12 @@ def environmentSpeedChange(pos, hitbox_size, current_speed, is_climbing, can_jum
     blocked_on = {"head": False,
                   "right": False,
                   "left": False}
+    
+    #Check if offscreen
+    if right_knee_block[0] == -1 or left_knee_block == -1:
+        current_speed = [0,0]
+        return(pos, current_speed, False, False, False, 10000)
+    
     #Walk up 1 block on right
     is_climbing = False
     if right_knee_block[0] != 1:
@@ -140,6 +146,12 @@ def environmentSpeedChange(pos, hitbox_size, current_speed, is_climbing, can_jum
          is_jumping = False
          #print("Owhh my head")
          blocked_on["head"] = True
+    
+    
+    # Eject from blocks you're stuck in
+    if blocked_on["left"] and blocked_on["right"] and not blocked_on["head"]:
+        print("Fixing...")
+        pos[1] -= 6
     
     if DEBUG:
         pass
@@ -210,9 +222,9 @@ def environmentSpeedChange(pos, hitbox_size, current_speed, is_climbing, can_jum
                     
                     new_pos = [new_x, new_y]
                     
-                    print(f"chunk: {chunk_index}")
-                    print(f"Block: {block_index}")
-                    print(new_pos)
+                    #print(f"chunk: {chunk_index}")
+                    #print(f"Block: {block_index}")
+                    #print(new_pos)
                     #pos[1] += 1
                     pos[1] = new_pos[1] 
                     print(f"set to: {pos[1]}")
@@ -917,7 +929,7 @@ def main_interface():
             action_offset = npc["image_states"][npc["image_state"]]
             action_offset = [npc["image_frame_offset"] * tile_size * -1,
                              action_offset * tile_size * -1]
-            print(npc["pos"])
+            #print(npc["pos"])
             draw_NPC(npc["images"],
                 npc["pos"],
                 action_offset,
@@ -1139,6 +1151,6 @@ def init(SEED, display_scale=1, FULLSCREEN=False):
     main_player = init_player(world_zero_offset)
     NPCs = []
     #Test
-    NPCs.append(init_skeleton([0,0]))
+    NPCs.append(init_skeleton([300,300]))
     
     main_interface()

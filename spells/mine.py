@@ -7,6 +7,13 @@ def update_mine_spell(mine_spell_data):
     event_pos = list(pygame.mouse.get_pos())
     block_type,pos,block_index,chunk_index = get_block_at(event_pos)
     
+    #Update world pos
+    world_change_in_x = world_xy[0] - mine_spell_data["last_world_pos"][0]
+    world_change_in_y = world_xy[1] - mine_spell_data["last_world_pos"][1]
+    mine_spell_data["pos"][0] -= world_change_in_x
+    mine_spell_data["pos"][1] += world_change_in_y
+    mine_spell_data["last_world_pos"] = copy.deepcopy(world_xy)
+    
     mine=False
     if abs(mine_spell_data["pos"][0] - event_pos[0]) < 5 and abs(mine_spell_data["pos"][1] - event_pos[1]) < 5:
         print("Mine")
@@ -83,5 +90,6 @@ def init_mine_spell(pos, power):
                                        3:10,
                                        4:40}
     mine_spell_data["update"] = update_mine_spell
+    mine_spell_data["last_world_pos"] = copy.deepcopy(world_xy)
     return(mine_spell_data)
 

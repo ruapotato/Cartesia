@@ -7,11 +7,11 @@ def update_skeleton(skeleton_data):
     global gravity
     global DEBUG
     global dot
+    global main_player
     
     #print(f"info: {skeleton_data['is_climbing']}")
     x_speed_change = 0
     y_speed_change = 0
-    
     
     #Adjust skeleton speed to wanted_speed slowly
     if not skeleton_data["can_jump"]:
@@ -51,8 +51,13 @@ def update_skeleton(skeleton_data):
                                                                                              is_climbing,
                                                                                              can_jump,
                                                                                              is_jumping)
-    skeleton_data["pos"][1] += skeleton_data["pos"][1] - pos_change[1]
-    skeleton_data["pos"][0] += skeleton_data["pos"][0] - pos_change[0]                                                                            
+    if fall_damage == 10000:
+        del NPCs[NPCs.index(skeleton_data)]
+        return
+    #skeleton_data["pos"][1] += skeleton_data["pos"][1] - pos_change[1]
+    skeleton_data["pos"][0] -= pos_change[0] - skeleton_data["pos"][0]
+    skeleton_data["pos"][1] += pos_change[1] - skeleton_data["pos"][1]                                                                  
+
     #skeleton_data["pos"][1] -= pos_change[1]
     #skeleton_data["pos"][0] -= pos_change[0]
     
@@ -67,48 +72,49 @@ def update_skeleton(skeleton_data):
         skeleton_data["pos"][0] += int(skeleton_data["speed"][0])
         skeleton_data["pos"][1] -= int(skeleton_data["speed"][1])
 
-    #Update magic
-    if skeleton_data["magic"] < skeleton_data["max_magic"]:
-        skeleton_data["magic"] += skeleton_data["magic_regen"]
+    #Update strength
+    if skeleton_data["strength"] < skeleton_data["max_strength"]:
+        skeleton_data["strength"] += skeleton_data["strength_regen"]
     
     # Update ative active_item
     mouse_presses = pygame.mouse.get_pressed()
-    end_spell = False
-    spell_casted = skeleton_data["magic_part_casted"] >= skeleton_data["magic_cast_speed"]
+    end_shooting = False
+    drawing_bow = skeleton_data["bow_draw"] >= skeleton_data["bow_draw_speed"]
     if mouse_presses[0]:
-        if spell_casted:
-            #Load new spell
-            if skeleton_data["active_spell"] == None:
-                skeleton_data["active_spell"] = skeleton_data["selected_spell"](list(pygame.mouse.get_pos()),
-                                                                            skeleton_data["spell_strength"])
-            if skeleton_data["active_spell"]["cost"] < skeleton_data["magic"]:
-                skeleton_data["magic"] -= skeleton_data["active_spell"]["cost"]
+        if drawing_bow:
+            #Start drawing
+            if skeleton_data["active_item"] == None:
+                skeleton_data["active_item"] = skeleton_data["selected_item"](skeleton_data["pos"], 
+                                                                              main_player["offset"], 
+                                                                              skeleton_data["body_strength"])
+            if skeleton_data["active_item"]["cost"] < skeleton_data["strength"]:
+                skeleton_data["strength"] -= skeleton_data["active_item"]["cost"]
             
-                #Update spell
-                skeleton_data["active_spell"]["update"](skeleton_data["active_spell"])
+                #Update arrow
+                skeleton_data["active_item"]["update"](skeleton_data["active_item"])
             else:
-                end_spell = True
-        if not spell_casted:
-            if skeleton_data["magic_part_casted"] == 0:
-                pygame.mixer.Sound.play(sounds["magic_spell"])
-            skeleton_data["magic_part_casted"] += 1
+                end_shooting = True
+        if not drawing_bow:
+            if skeleton_data["bow_draw"] == 0:
+                pass#pygame.mixer.Sound.play(sounds["strength_spell"])
+            skeleton_data["bow_draw"] += 1
     else:
-        end_spell = True
-    if end_spell:
-        skeleton_data["magic_part_casted"] = 0
-        if skeleton_data["active_spell"] != None:
-            del skeleton_data["active_spell"]
-            skeleton_data["active_spell"] = None
+        end_shooting = True
+    if end_shooting:
+        skeleton_data["bow_draw"] = 0
+        if skeleton_data["active_item"] != None:
+            del skeleton_data["active_item"]
+            skeleton_data["active_item"] = None
         
     #Update frame
-    if skeleton_data["magic_part_casted"] != 0:
-        if "cast" not in skeleton_data["image_state"]:
-            skeleton_data["image_state"] = f"cast_{skeleton_data['image_state']}"
-        if skeleton_data["magic_part_casted"] < skeleton_data["magic_cast_speed"]:
-            skeleton_data["image_frame_offset"] = int((7/skeleton_data["magic_cast_speed"]) * skeleton_data["magic_part_casted"])
+    if skeleton_data["bow_draw"] != 0:
+        if "draw" not in skeleton_data["image_state"]:
+            skeleton_data["image_state"] = f"draw_{skeleton_data['image_state']}"
+        if skeleton_data["bow_draw"] < skeleton_data["bow_draw_speed"]:
+            skeleton_data["image_frame_offset"] = int((7/skeleton_data["bow_draw_speed"]) * skeleton_data["bow_draw"])
             #skeleton_data["image_frame_offset"] %= 7
     else:
-        if "cast" in skeleton_data["image_state"]:
+        if "draw" in skeleton_data["image_state"]:
             skeleton_data["image_state"] = skeleton_data["image_state"].split("_")[-1]
     
     if skeleton_data["skeleton_is_walking"]:
@@ -120,32 +126,34 @@ def init_skeleton(pos):
     #skeleton pos from would pos
     skeleton_data["pos"] = pos
     skeleton_data["speed"] = [0,0]
+    skeleton_data["walk_speed"] = 6
+    skeleton_data["jump_speed"] = 15
     skeleton_data["wanted_speed"] = [0,0]
     skeleton_data["display_size"] = [64,64]
     skeleton_data["hitbox_size"] = [32,64]
-    skeleton_data["selected_spell"] = init_mine_spell
-    skeleton_data["active_spell"] = None
-    skeleton_data["spell_strength"] = 5
-    skeleton_data["magic"] = 90
-    skeleton_data["magic_regen"] = .2
-    skeleton_data["max_magic"] = 100
-    skeleton_data["magic_cast_speed"] = 25
-    skeleton_data["magic_part_casted"] = 0
+    skeleton_data["active_item"] = None
+    skeleton_data["selected_item"] = init_bow
+    
+    skeleton_data["body_strength"] = 5
+    skeleton_data["strength"] = 90
+    skeleton_data["strength_regen"] = .2
+    skeleton_data["max_strength"] = 100
+    skeleton_data["bow_draw_speed"] = 25
+    skeleton_data["bow_draw"] = 0
     
     skeleton_images = {"body": "/body/male/skeleton",
-                       "bow": "/weapons/right hand/either/bow_skeleton"}
-    
+                       "bow": "/weapons/right hand/either/bow_skeleton",
+                       "arrow": "/weapons/left hand/either/arrow_skeleton"}
     
     #skeleton_images = {"body": "/body/male/light"}
     
     skeleton_data["images"] = skeleton_images
     skeleton_data["image_base_path"] = "/player/Universal-LPC-spritesheet"
-    skeleton_data["image_states"] = {"left":9, "right": 11, "cast_left": 1, "cast_right": 3}
+    skeleton_data["image_states"] = {"left":9, "right": 11, "draw_left": 18, "draw_right": 20}
     skeleton_data["image_state"] = "left"
     skeleton_data["image_frame_offset"] = 0
     skeleton_data["skeleton_is_walking"] = False
-    skeleton_data["walk_speed"] = 6
-    skeleton_data["jump_speed"] = 15
+
     skeleton_data["is_jumping"] = False
     skeleton_data["is_climbing"] = False
     skeleton_data["can_jump"] = True
