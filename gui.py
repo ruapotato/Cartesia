@@ -683,9 +683,12 @@ def get_block_at(xy):
     #print(f"{chunk_size} Block? {block_x} x {block_y}")
     #print(block_data[block_x][block_y])
     chunk_index = f"{x_with_offset}_{y_with_offset}"
+    block_index = [block_x,block_y]
+    #If chunk is not loaded
+    if chunk_index not in chunk_block_data:
+        return(-1,pos,block_index, chunk_index)
     block_data = chunk_block_data[chunk_index]
     block_type = block_data[block_x][block_y]
-    block_index = [block_x,block_y]
     return_data = [block_type,pos,block_index,chunk_index]
     return(return_data)
 
@@ -755,13 +758,13 @@ def main_interface():
     global light_sources
     #global darkness_write_buffer
     global world_light
+    global NPCs
     
     running = True
     
     background_color = pygame.color.Color(25,25,25)
     player_display_pos = [int(display_width/2), int(display_height/2)]
-    player_start_pos = [0,0]
-    world_xy = copy.deepcopy(player_start_pos)
+
     player_target = world_xy
     max_speed = 3
     player_speed = [0,0]
@@ -906,9 +909,20 @@ def main_interface():
         #Update NPC
         #update_game()
         
-        #entities
-        update_player(main_player)
+
         
+        for npc in NPCs:
+            npc["update"](npc)
+            tile_size = npc["display_size"][0]
+            action_offset = npc["image_states"][npc["image_state"]]
+            action_offset = [npc["image_frame_offset"] * tile_size * -1,
+                             action_offset * tile_size * -1]
+            print(npc["pos"])
+            draw_NPC(npc["images"],
+                npc["pos"],
+                action_offset,
+                npc["surface"],
+                npc["image_base_path"])
         
         #print(world_xy)
         #main_player["image_states"] = {"left":10, "right": 12}
@@ -916,7 +930,8 @@ def main_interface():
         #main_player["image_frame_offset"] = 0
         
         
-
+        #entities
+        update_player(main_player)
         tile_size = main_player["display_size"][0]
         action_offset = main_player["image_states"][main_player["image_state"]]
         action_offset = [main_player["image_frame_offset"] * tile_size * -1,
@@ -1013,6 +1028,8 @@ def init(SEED, display_scale=1, FULLSCREEN=False):
     global world_light
     global world_light_hight
     global sounds
+    global NPCs
+    global world_xy
     
     DEBUG = True
     gen_chunk.set_seed(SEED)
@@ -1027,6 +1044,8 @@ def init(SEED, display_scale=1, FULLSCREEN=False):
     #display_width = int(1440/2)
     #display_height = int(720/2)
     loaded_images = {}
+    player_start_pos = [0,0]
+    world_xy = copy.deepcopy(player_start_pos)
     display_width = int(display_info.current_w/display_scale)
     display_height = int(display_info.current_h/display_scale)
     clock = pygame.time.Clock()
@@ -1118,5 +1137,8 @@ def init(SEED, display_scale=1, FULLSCREEN=False):
     #entities
     world_zero_offset = [(display_width//2),(display_height//2)]
     main_player = init_player(world_zero_offset)
+    NPCs = []
+    #Test
+    NPCs.append(init_skeleton([0,0]))
     
     main_interface()
