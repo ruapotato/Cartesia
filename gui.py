@@ -113,7 +113,7 @@ def environmentSpeedChange(pos, hitbox_size, current_speed, is_climbing, can_jum
                 if int(current_speed[0]) > 0:
                     #print("climbing right")
                     #current_speed[1] = 2.5
-                    pos[1] -= 5
+                    pos[1] -= 6
                     is_climbing = True
     
     #Walk up 1 block on left
@@ -128,7 +128,7 @@ def environmentSpeedChange(pos, hitbox_size, current_speed, is_climbing, can_jum
                 if int(current_speed[0]) < 0:
                     #print("climbing left")
                     #current_speed[1] = 2.5
-                    pos[1] -= 5
+                    pos[1] -= 6
                     is_climbing = True
             
     
@@ -825,26 +825,26 @@ def main_interface():
                 
                 if not pre_game:
                     # Move left
-                    
-                    if key_name == pygame.K_LEFT or key_name == pygame.K_a:
-                        main_player["wanted_speed"][0] = main_player["walk_speed"] * -1
-                        arrow_pressed = True
-                        main_player["image_state"] = "left"
-                        main_player["player_is_walking"] = True
-                
-                    # Move right
-                    if key_name == pygame.K_RIGHT or key_name == pygame.K_d:
-                        main_player["wanted_speed"][0] = main_player["walk_speed"]
-                        arrow_pressed = True
-                        main_player["image_state"] = "right"
-                        main_player["player_is_walking"] = True
-                
-                    # Jump
-                    if main_player["can_jump"]:
-                        if key_name == pygame.K_UP or key_name == pygame.K_w or key_name == pygame.K_SPACE:
-                            main_player["wanted_speed"][1] = main_player["jump_speed"] 
-                            main_player["is_jumping"] = True
+                    if not main_player["magic_part_casted"]:
+                        if key_name == pygame.K_LEFT or key_name == pygame.K_a:
+                            main_player["wanted_speed"][0] = main_player["walk_speed"] * -1
                             arrow_pressed = True
+                            main_player["image_state"] = "left"
+                            main_player["player_is_walking"] = True
+                    
+                        # Move right
+                        if key_name == pygame.K_RIGHT or key_name == pygame.K_d:
+                            main_player["wanted_speed"][0] = main_player["walk_speed"]
+                            arrow_pressed = True
+                            main_player["image_state"] = "right"
+                            main_player["player_is_walking"] = True
+                    
+                        # Jump
+                        if main_player["can_jump"]:
+                            if key_name == pygame.K_UP or key_name == pygame.K_w or key_name == pygame.K_SPACE:
+                                main_player["wanted_speed"][1] = main_player["jump_speed"] 
+                                main_player["is_jumping"] = True
+                                arrow_pressed = True
 
                 
                     # if left arrow key is pressed

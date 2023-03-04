@@ -14,6 +14,8 @@ def init_player(offset):
     player_data["magic"] = 90
     player_data["magic_regen"] = .2
     player_data["max_magic"] = 100
+    player_data["magic_cast_speed"] = 25
+    player_data["magic_part_casted"] = 0
     
     player_images = {"body": "/body/male/light",
                      "ears": "/body/male/ears/bigears_light",
@@ -30,7 +32,7 @@ def init_player(offset):
     
     player_data["images"] = player_images
     player_data["image_base_path"] = "/player/Universal-LPC-spritesheet"
-    player_data["image_states"] = {"left":9, "right": 11}
+    player_data["image_states"] = {"left":9, "right": 11, "cast_left": 1, "cast_right": 3}
     player_data["image_state"] = "left"
     player_data["image_frame_offset"] = 0
     player_data["player_is_walking"] = False
@@ -81,7 +83,7 @@ def update_player(player_data):
     is_jumping = player_data["is_jumping"]
     
     #Block hit checking
-    pos_change, newSpeed, is_climbing, can_jump, is_jumping, damage = environmentSpeedChange(pos,
+    pos_change, newSpeed, is_climbing, can_jump, is_jumping, fall_damage = environmentSpeedChange(pos,
                                                                                              hitbox_size,
                                                                                              current_speed,
                                                                                              is_climbing,
@@ -101,10 +103,7 @@ def update_player(player_data):
     if player_data["speed"] != [0,0]:
         world_xy[0] += int(player_data["speed"][0])
         world_xy[1] += int(player_data["speed"][1])
-   #Update frame
-    if player_data["player_is_walking"]:
-        player_data["image_frame_offset"] += 1
-        player_data["image_frame_offset"] %= 9
+
     
     #Update magic
     if player_data["magic"] < player_data["max_magic"]:
@@ -113,22 +112,41 @@ def update_player(player_data):
     # Update ative active_item
     mouse_presses = pygame.mouse.get_pressed()
     end_spell = False
+    spell_casted = player_data["magic_part_casted"] >= player_data["magic_cast_speed"]
     if mouse_presses[0]:
-        #Load new spell
-        if player_data["active_spell"] == None:
-            player_data["active_spell"] = player_data["selected_spell"](list(pygame.mouse.get_pos()),
-                                                                        player_data["spell_strength"])
-        if player_data["active_spell"]["cost"] < player_data["magic"]:
-            player_data["magic"] -= player_data["active_spell"]["cost"]
-        
-            #Update spell
-            player_data["active_spell"]["update"](player_data["active_spell"])
-        else:
-            end_spell = True
+        if spell_casted:
+            #Load new spell
+            if player_data["active_spell"] == None:
+                player_data["active_spell"] = player_data["selected_spell"](list(pygame.mouse.get_pos()),
+                                                                            player_data["spell_strength"])
+            if player_data["active_spell"]["cost"] < player_data["magic"]:
+                player_data["magic"] -= player_data["active_spell"]["cost"]
+            
+                #Update spell
+                player_data["active_spell"]["update"](player_data["active_spell"])
+            else:
+                end_spell = True
+        if not spell_casted:
+            player_data["magic_part_casted"] += 1
     else:
         end_spell = True
     if end_spell:
+        player_data["magic_part_casted"] = 0
         if player_data["active_spell"] != None:
             del player_data["active_spell"]
             player_data["active_spell"] = None
         
+    #Update frame
+    if player_data["magic_part_casted"] != 0:
+        if "cast" not in player_data["image_state"]:
+            player_data["image_state"] = f"cast_{player_data['image_state']}"
+        if player_data["magic_part_casted"] < player_data["magic_cast_speed"]:
+            player_data["image_frame_offset"] = int((7/player_data["magic_cast_speed"]) * player_data["magic_part_casted"])
+            #player_data["image_frame_offset"] %= 7
+    else:
+        if "cast" in player_data["image_state"]:
+            player_data["image_state"] = player_data["image_state"].split("_")[-1]
+    
+    if player_data["player_is_walking"]:
+        player_data["image_frame_offset"] += 1
+        player_data["image_frame_offset"] %= 9
