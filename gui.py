@@ -20,7 +20,7 @@ rendered_chunks = []
 block_size = 16
 chunk_blocks = 32
 chunk_size = block_size * chunk_blocks
-gravity = -1
+gravity = -1.5
 
 
 
@@ -699,6 +699,33 @@ def get_world_light_level():
     #light_level = min_point + (world_xy[1]//100)
     return([0,min_point - change])
 
+def text_objects(text, font, color="Black"):
+    textSurface = font.render(text, True, pygame.color.Color(color))
+    return textSurface, textSurface.get_rect()
+
+def value_bar(x,y,value, from_right=True, size=10, px_multiplayer=1.6, hide_text=False, unit="%"):
+    x = int(x)
+    y = int(y)
+    
+    size = int(size)
+    value_txt = f"{value:.1f}{unit}"
+    
+    #set bar size to 160 px (1.6 times 100%)
+    value *= px_multiplayer
+    value = int(value)
+    
+    if from_right:
+        #Grow from right
+        x = x - value
+    
+    pygame.draw.rect(gameDisplay, pygame.color.Color("black"),(x,y,value,size))
+    if not hide_text:
+        smallText = pygame.font.SysFont("comicsansms",15)
+        textSurf, textRect = text_objects(value_txt, smallText, color="white")
+        textRect.center = ( int(x+int(value/2)), int(y+int(size/2)) )
+        gameDisplay.blit(textSurf, textRect)
+
+
 def main_interface():
     #Globals needed by update_game
     global selected_crop
@@ -902,7 +929,8 @@ def main_interface():
         
         
 
-        
+        #Draw interface stuff
+        value_bar(display_width - 5,5,main_player["magic"])
         #World lighting
         #darkness.blit(world_light, get_world_light_level())
         #print(f"Light level: {get_world_light_level()}")
@@ -929,6 +957,16 @@ def main_interface():
         pygame.display.update()
         clock.tick(fps)
 
+
+#Load into this namespace all needed spells
+for entry in os.scandir('spells'):
+    if entry.is_file():
+        path = f"{script_path}/spells/{entry.name}"
+        print(path)
+        with open(path) as fh:
+            python_script = fh.readlines()
+        python_script = "\n".join(python_script)
+        exec(python_script)
 
 #Load into this namespace all needed entities
 for entry in os.scandir('entities'):
@@ -978,8 +1016,8 @@ def init(SEED, display_scale=1, FULLSCREEN=False):
     
     fps = 30
     #Test at hight FPS
-    if DEBUG:
-        fps = 60
+    #if DEBUG:
+    #    fps = 60
     pygame.init()
     display_info = pygame.display.Info()
 

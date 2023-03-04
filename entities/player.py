@@ -8,16 +8,22 @@ def init_player(offset):
     player_data["wanted_speed"] = [0,0]
     player_data["display_size"] = [64,64]
     player_data["hitbox_size"] = [32,64]
-    player_data["active_item"] = init_pickaxe(copy.deepcopy(offset), 1, 5)
-    
+    player_data["selected_spell"] = init_mine_spell
+    player_data["active_spell"] = None
+    player_data["spell_strength"] = 5
+    player_data["magic"] = 90
+    player_data["magic_regen"] = .2
+    player_data["max_magic"] = 100
     
     player_images = {"body": "/body/male/light",
                      "ears": "/body/male/ears/bigears_light",
                      "eyes": "/body/male/eyes/brown",
                      "nose": "/body/male/nose/buttonnose_light",
+                     "hair": "/hair/male/messy1",
                      "shirt": "/torso/leather/chest_male",
                      "shoulders": "/torso/leather/shoulders_male",
-                     "pants": "/legs/skirt/male/robe_skirt_male"}
+                     "pants": "/legs/skirt/male/robe_skirt_male",
+                     "wand": "/weapons/right hand/male/woodwand_male"}
     
     
     #player_images = {"body": "/body/male/light"}
@@ -28,8 +34,8 @@ def init_player(offset):
     player_data["image_state"] = "left"
     player_data["image_frame_offset"] = 0
     player_data["player_is_walking"] = False
-    player_data["walk_speed"] = 3
-    player_data["jump_speed"] = 12
+    player_data["walk_speed"] = 6
+    player_data["jump_speed"] = 15
     player_data["is_jumping"] = False
     player_data["is_climbing"] = False
     player_data["can_jump"] = True
@@ -100,8 +106,29 @@ def update_player(player_data):
         player_data["image_frame_offset"] += 1
         player_data["image_frame_offset"] %= 9
     
+    #Update magic
+    if player_data["magic"] < player_data["max_magic"]:
+        player_data["magic"] += player_data["magic_regen"]
+    
     # Update ative active_item
-    if player_data["active_item"] != None:
-        player_data["active_item"]["facing"] = player_data["image_state"]
-        player_data["active_item"]["update"](player_data["active_item"])
+    mouse_presses = pygame.mouse.get_pressed()
+    end_spell = False
+    if mouse_presses[0]:
+        #Load new spell
+        if player_data["active_spell"] == None:
+            player_data["active_spell"] = player_data["selected_spell"](list(pygame.mouse.get_pos()),
+                                                                        player_data["spell_strength"])
+        if player_data["active_spell"]["cost"] < player_data["magic"]:
+            player_data["magic"] -= player_data["active_spell"]["cost"]
+        
+            #Update spell
+            player_data["active_spell"]["update"](player_data["active_spell"])
+        else:
+            end_spell = True
+    else:
+        end_spell = True
+    if end_spell:
+        if player_data["active_spell"] != None:
+            del player_data["active_spell"]
+            player_data["active_spell"] = None
         

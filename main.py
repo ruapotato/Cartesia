@@ -8,8 +8,8 @@ import gui
 
 SEED = 1564654
 #import matplotlib.pyplot as plt
-gui.init(SEED, display_scale=1.5, FULLSCREEN=False)
-#gui.init(SEED, display_scale=1.5, FULLSCREEN=True)
+#gui.init(SEED, display_scale=1.5, FULLSCREEN=False)
+gui.init(SEED, display_scale=1.5, FULLSCREEN=True)
 
 """
 SEED = 123456
