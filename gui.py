@@ -22,6 +22,8 @@ chunk_blocks = 32
 chunk_size = block_size * chunk_blocks
 gravity = -1.5
 
+music = {"happy": f"{script_path}/music/Komiku - Hélice's Theme.mp3"}
+
 
 
 def render_chunk(address_txt, surface):
@@ -1010,6 +1012,7 @@ def init(SEED, display_scale=1, FULLSCREEN=False):
     #global darkness_write_buffer
     global world_light
     global world_light_hight
+    global sounds
     
     DEBUG = True
     gen_chunk.set_seed(SEED)
@@ -1053,6 +1056,13 @@ def init(SEED, display_scale=1, FULLSCREEN=False):
         gameDisplay = pygame.display.set_mode((display_width,display_height))
         #gameDisplay.set_colorkey((255,0,255))
     
+    
+    
+    #Music:
+    pygame.mixer.music.load(music["happy"])
+    pygame.mixer.music.play(-1)
+    sounds = {"magic_spell": pygame.mixer.Sound(f"{script_path}/sounds/80-CC0-RPG-SFX/creature_die_01.ogg")}
+
     
     #light_source = pygame.image.load(f"{script_path}/img/light4.png").convert()
     #light_source.set_colorkey((0,0,0))

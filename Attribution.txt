@@ -1,3 +1,9 @@
 img/sprPenguinP.png CC-BY-SA-4.0 http://kyrodianlegends.com/license
 img/pixelperfection/* CC-BY-SA-4.0 by xssheep https://www.minecraftforum.net/forums/mapping-and-modding-java-edition/resource-packs/1242533-pixel-perfection-now-with-polar-bears-1-11
 img/player/* LOTS https://github.com/makrohn/Universal-LPC-spritesheet
+
+Music:
+Hélice's Theme by Komiku is licensed under a CC0 1.0 Universal License. (https://freemusicarchive.org/music/Komiku/Helice_Awesome_Dance_Adventure_/helices-theme/)
+
+Sounds:
+80-CC0-RPG-SFX from: https://opengameart.org/content/80-cc0-rpg-sfx

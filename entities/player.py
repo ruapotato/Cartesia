@@ -104,7 +104,6 @@ def update_player(player_data):
         world_xy[0] += int(player_data["speed"][0])
         world_xy[1] += int(player_data["speed"][1])
 
-    
     #Update magic
     if player_data["magic"] < player_data["max_magic"]:
         player_data["magic"] += player_data["magic_regen"]
@@ -127,6 +126,8 @@ def update_player(player_data):
             else:
                 end_spell = True
         if not spell_casted:
+            if player_data["magic_part_casted"] == 0:
+                pygame.mixer.Sound.play(sounds["magic_spell"])
             player_data["magic_part_casted"] += 1
     else:
         end_spell = True
