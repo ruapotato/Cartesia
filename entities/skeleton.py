@@ -107,12 +107,12 @@ def update_skeleton(skeleton_data):
         
     if shoot:
         if skeleton_data["active_item"] == None:
-            print("Making new!")
+            #print("Making new!")
             skeleton_data["active_item"] = skeleton_data["selected_item"](copy.deepcopy(skeleton_data["pos"]), 
                                                                             copy.deepcopy(main_player["offset"]), 
                                                                             skeleton_data["body_strength"])
         strength_to_shoot = skeleton_data["active_item"]["cost"] < skeleton_data["strength"]
-        print(f"Can shoot: {strength_to_shoot}")
+        #print(f"Can shoot: {strength_to_shoot}")
         if strength_to_shoot:
             #Start drawing
             skeleton_data["bow_draw"] += 1
@@ -120,7 +120,7 @@ def update_skeleton(skeleton_data):
                 if not skeleton_data["active_item"]["active"]:
                     skeleton_data["strength"] -= skeleton_data["active_item"]["cost"]
                     skeleton_data["active_item"]["active"] = True
-                    print("Made active")
+                    #print("Made active")
         #Update arrow
         if skeleton_data["active_item"]["active"]:
             still_active = skeleton_data["active_item"]["update"](skeleton_data["active_item"])
@@ -128,9 +128,7 @@ def update_skeleton(skeleton_data):
                 del skeleton_data["active_item"]
                 skeleton_data["active_item"] = None
                 end_shooting = True
-            
-            
-            print("Hmmmm")
+
     else:
         end_shooting = True
     if end_shooting:

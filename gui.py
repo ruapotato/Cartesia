@@ -21,6 +21,8 @@ block_size = 16
 chunk_blocks = 32
 chunk_size = block_size * chunk_blocks
 gravity = -1.5
+#day_len = 7 #Min
+day_len = .5
 
 music = {"happy": f"{script_path}/music/Komiku - Hélice's Theme.mp3"}
 
@@ -38,11 +40,14 @@ def render_chunk(address_txt, surface):
             draw_y = y * block_size
             block_index = data[x][y]
             if block_index in block_images:
+                #if block_index == 1:
+                #    continue
                 img = block_images[block_index]
                 
                 #5 = torch 
                 # 2 = grass above -3 TODO change to top level air block
-                if block_index == 5 or (block_index == 2 and address[1] > -3):
+                #if block_index == 5 or (block_index == 2 and address[1] > -3):
+                if block_index == 5:
                     where = [address,[draw_x, draw_y]]
                     if address_txt in light_sources:
                         light_sources[address_txt].append(where)
@@ -279,12 +284,41 @@ def draw_NPC(images_by_path, pos, action_offset, image_buffer, img_base_path):
     draw_img(image_buffer, pos)
 
 
-def draw_lighting(surface, chunk_address):
+def draw_sun(surface, chunk_address, offset, undraw=False):
+    global light_sources
+    global game_time
+    global last_game_time
+    global sun
+    
+    max_time = (255//2)
+    change_in_display = (display_width )//max_time
+    y_pos = main_player["offset"][1]
+    if undraw:
+        sun_pos = [last_game_time * change_in_display + offset[0] + display_width//2, y_pos - offset[1]]
+    else:
+        sun_pos = [game_time * change_in_display + offset[0] + display_width//2, y_pos - offset[1]]
+    
+    #print(sun_pos)
+    y_offset = sun_pos[1] - (chunk_address[1] * chunk_size * -1)
+    x_offset = sun_pos[0] - (chunk_address[0] * chunk_size)
+    new_pos = [x_offset - int(sun.get_width()/2), y_offset - int(sun.get_height()/2)]
+    #sun_pos = [x_offset,y_offset]
+    #print(sun_pos)
+    #x_offset += block_offset[0]  + block_size//2
+    #y_offset += block_offset[1] + block_size//2
+    #surface.blit(light_source, sun_pos, special_flags=pygame.BLEND_RGBA_SUB)
+    if undraw:
+        surface.blit(sun, new_pos, special_flags=pygame.BLEND_RGBA_SUB)
+    else:
+        surface.blit(sun, new_pos, special_flags=pygame.BLEND_RGBA_ADD)
+
+def draw_lighting(surface, chunk_address, undraw=False):
     global light_sources
     global chunk_size
     #global darkness
     global light_source
     global DEBUG
+
     
     #print(f"Light me up: {light_sources}")
     for chunk_with_lights in light_sources:
@@ -297,7 +331,10 @@ def draw_lighting(surface, chunk_address):
             x_offset += block_offset[0]  + block_size//2
             y_offset += block_offset[1] + block_size//2
             new_pos = [x_offset - int(light_source.get_width()/2), y_offset - int(light_source.get_height()/2)]
-            surface.blit(light_source, new_pos, special_flags=pygame.BLEND_RGBA_ADD)
+            if undraw:
+                surface.blit(light_source, new_pos, special_flags=pygame.BLEND_RGBA_SUB)
+            else:
+                surface.blit(light_source, new_pos, special_flags=pygame.BLEND_RGBA_ADD)
             """
             address = light[0]
             block_offset = light[1]
@@ -619,6 +656,11 @@ def draw_world():
     global rendered_sources
     global game_tick
     global fps
+    global game_time
+    global sun
+    global last_sunspot
+    
+    sun_pos = [game_time, 50]
     
     for chunk_index in rendered_chunks:
         address = chunk_index.split("_")
@@ -626,12 +668,24 @@ def draw_world():
         x_offset = (address[0] * chunk_size) - world_xy[0]
         y_offset = (address[1] * chunk_size * -1) + world_xy[1]
         surface = chunk_surfaces[chunk_index]
-
+        
+        """
+        if game_tick % 100 == 0:
+            alpha = 200
+            #surface.fill((0, 0, 0, alpha), None, pygame.BLEND_RGBA_SUB)
+            #surface.set_alpha(5)
+            rendered_sources = {}
+            draw_lighting(surface, address, undraw=True)
+        """
         if rendered_sources != light_sources:
             draw_lighting(surface, address)
-
+        
+        draw_sun(surface, address, last_sunspot, undraw=True)
+        draw_sun(surface, address, world_xy)
+        #draw_sun(surface, address, world_xy)
+        
         gameDisplay.blit(surface, [x_offset,y_offset])
-    
+    last_sunspot = copy.deepcopy(world_xy)
     #Mark lights updated if we just did the lighting per chunk_index
     if rendered_sources != light_sources:
         rendered_sources = copy.deepcopy(light_sources)
@@ -645,7 +699,8 @@ def delete_block(pos,block_index,chunk_index):
     block_data = chunk_block_data[chunk_index]
     block_data[block_index[0]][block_index[1]] = 1
     surface = chunk_surfaces[chunk_index]
-    surface.blit(block_images[1], [block_index[0]*block_size,block_index[1]*block_size])
+    #surface.blit(block_images[1], [block_index[0]*block_size,block_index[1]*block_size])
+    pygame.draw.rect(surface, (0,0,0,0), [block_index[0]*block_size, block_index[1]*block_size, block_size, block_size])
     print(F"Deleted: {pos} {chunk_index} {block_index}")
 
 
@@ -771,6 +826,8 @@ def main_interface():
     #global darkness_write_buffer
     global world_light
     global NPCs
+    global game_time
+    global last_game_time
     
     running = True
     
@@ -784,7 +841,7 @@ def main_interface():
     #player_image = pygame.image.load(f"{script_path}/img/player.png").convert()
     dir_pos = {}
     game_actors = {}
-    game_tick = 1
+    game_tick = day_frames//4
     redraw_forced = False
     view_tty = False
     pre_game = False
@@ -890,9 +947,10 @@ def main_interface():
         #TODO update needed_chunks based on player x y
         for needed_chunk in needed_chunks:
             if needed_chunk not in rendered_chunks:
+                #chunk_surfaces[needed_chunk] = pygame.Surface((chunk_size, chunk_size),flags=pygame.SRCALPHA)
                 chunk_surfaces[needed_chunk] = pygame.Surface((chunk_size, chunk_size),flags=pygame.SRCALPHA)
                 chunk_surfaces[needed_chunk].fill((0,0,0,0))
-                chunk_surfaces[needed_chunk].set_colorkey((255,0,255))
+                #chunk_surfaces[needed_chunk].set_colorkey((255,0,255))
                 data = render_chunk(needed_chunk, chunk_surfaces[needed_chunk])
                 chunk_block_data[needed_chunk] = data
                 rendered_chunks.append(needed_chunk)
@@ -913,10 +971,15 @@ def main_interface():
 
         #Draw stuff
         #Sky
-        gameDisplay.fill((0,0,0,0))
+        game_time = (255/day_frames) * game_tick
+        game_time = abs(game_time - 255//2)
+        #print(game_time)
+        #sky_color = (100,100,200,255-game_time)
+        
+        gameDisplay.fill((0,0,0))
         gameDisplay.set_alpha(0)
         draw_world()
-        
+        last_game_time = copy.deepcopy(game_time)
         
         #Update NPC
         #update_game()
@@ -972,10 +1035,12 @@ def main_interface():
             
         
         #draw_img(player_image, player_display_pos)
+
         
+        #print(f"time: {sky_darkness}")
         #Draw NPC
         #draw_npc()
-        if game_tick > 1000:
+        if game_tick > day_frames:
             game_tick = 2
         else:
             game_tick = game_tick + 1
@@ -1042,14 +1107,23 @@ def init(SEED, display_scale=1, FULLSCREEN=False):
     global sounds
     global NPCs
     global world_xy
+    global last_sunspot
+    global day_frames
+    global sun
+    global game_time
+    global last_game_time
     
     DEBUG = True
     gen_chunk.set_seed(SEED)
     
-    fps = 30
+    fps = 60
     #Test at hight FPS
     #if DEBUG:
     #    fps = 60
+    day_frames = fps * 60 * day_len
+    game_time = (255/day_frames) * (day_frames//2)
+    last_game_time = copy.deepcopy(game_time)
+    
     pygame.init()
     display_info = pygame.display.Info()
 
@@ -1058,6 +1132,7 @@ def init(SEED, display_scale=1, FULLSCREEN=False):
     loaded_images = {}
     player_start_pos = [0,0]
     world_xy = copy.deepcopy(player_start_pos)
+    last_sunspot = copy.deepcopy(world_xy)
     display_width = int(display_info.current_w/display_scale)
     display_height = int(display_info.current_h/display_scale)
     clock = pygame.time.Clock()
@@ -1065,11 +1140,11 @@ def init(SEED, display_scale=1, FULLSCREEN=False):
     fount_size = fount_size * 4
     text_font = pygame.font.SysFont("comicsansms",fount_size)
     small_text_font = pygame.font.SysFont("comicsansms",12)
-    sky_color = (100,100,200,255)
+    sky_color = (0,175,255,1)
     #Lighting stuff
     dark_block = pygame.Surface((16, 16),flags=pygame.SRCALPHA)
     
-    dark_block.fill((0,0,0,200))
+    dark_block.fill((0,0,0,254))
     #darkness = pygame.Surface((display_width, display_height))
     #darkness.fill((0,0,0))
     #darkness.set_colorkey((255,0,255))
@@ -1085,7 +1160,7 @@ def init(SEED, display_scale=1, FULLSCREEN=False):
         gameDisplay = pygame.display.set_mode((display_width,display_height), pygame.FULLSCREEN)
     else:
         gameDisplay = pygame.display.set_mode((display_width,display_height))
-        #gameDisplay.set_colorkey((255,0,255))
+    gameDisplay.set_colorkey((255,0,255))
     
     
     
@@ -1095,14 +1170,19 @@ def init(SEED, display_scale=1, FULLSCREEN=False):
     sounds = {"magic_spell": pygame.mixer.Sound(f"{script_path}/sounds/80-CC0-RPG-SFX/creature_die_01.ogg")}
 
     
-    #light_source = pygame.image.load(f"{script_path}/img/light4.png").convert()
-    #light_source.set_colorkey((0,0,0))
+    light_source = pygame.image.load(f"{script_path}/img/light4.png").convert()
+    light_source.set_colorkey((0,0,0))
     
-    #light_source = pygame.Surface((200, 200),flags=pygame.SRCALPHA)
-    #light_source.fill((0,0,0,0))
-    #pygame.draw.circle(light_source, (0,0,0,255), (100, 100), 100)
-    light_source = pygame.image.load(f"{script_path}/img/light.png").convert_alpha()
-    #light_source.set_colorkey((0, 0, 0))
+    
+    sun = pygame.transform.scale(pygame.image.load(f"{script_path}/img/sun.png").convert_alpha(), [display_width, display_height])
+    sun.set_colorkey((0,0,0))
+    #sun = pygame.Surface((200, 200),flags=pygame.SRCALPHA)
+    #sun.fill((0,0,0,0))
+    #pygame.draw.circle(sun, (0,0,0,255//2), (100, 100), 100)
+    #light_source = pygame.image.load(f"{script_path}/img/light.png").convert_alpha()
+    #sun = pygame.image.load(f"{script_path}/img/light.png").convert_alpha()
+    
+    
     #Would light
     world_light = pygame.image.load(f"{script_path}/img/world_light.png").convert()
     world_light.set_colorkey((0,0,0))
@@ -1113,7 +1193,7 @@ def init(SEED, display_scale=1, FULLSCREEN=False):
     texterus_path = f"{script_path}/img/pixelperfection"
     
     #Sky
-    block_images[1] = pygame.Surface((16, 16),flags=pygame.SRCALPHA)
+    block_images[1] = pygame.Surface((16, 16), flags=pygame.SRCALPHA)
     block_images[1].fill(sky_color)
     #light_source.fill((0,0,0,0))
     #Dirt
