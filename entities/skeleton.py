@@ -13,6 +13,30 @@ def update_skeleton(skeleton_data):
     x_speed_change = 0
     y_speed_change = 0
     
+    shoot_at = display_width//4
+    if skeleton_data["active_item"] != None:
+        shoot = True
+    else:
+        shoot = False
+    if skeleton_data["pos"][0] < main_player["offset"][0] - shoot_at:
+        skeleton_data["wanted_speed"][0] = skeleton_data["walk_speed"]
+        skeleton_data["skeleton_is_walking"] = True
+    elif skeleton_data["pos"][0] > main_player["offset"][0] + shoot_at:
+        skeleton_data["wanted_speed"][0] = skeleton_data["walk_speed"] * -1
+        skeleton_data["skeleton_is_walking"] = True
+    else:
+        skeleton_data["wanted_speed"][0] = 0
+        shoot = True
+    if skeleton_data["pos"][0] > main_player["offset"][0]:
+        skeleton_data["image_state"] = "left"
+    else:
+        skeleton_data["image_state"] = "right"
+    #Don't move when shooting
+    if skeleton_data["active_item"] != None:
+        skeleton_data["wanted_speed"] = [0,0]
+        skeleton_data["skeleton_is_walking"] = False
+    
+    
     #Adjust skeleton speed to wanted_speed slowly
     if not skeleton_data["can_jump"]:
         skeleton_data["wanted_speed"][1] = 0
@@ -76,28 +100,37 @@ def update_skeleton(skeleton_data):
     if skeleton_data["strength"] < skeleton_data["max_strength"]:
         skeleton_data["strength"] += skeleton_data["strength_regen"]
     
-    # Update ative active_item
+    # Update active_item
     mouse_presses = pygame.mouse.get_pressed()
     end_shooting = False
-    drawing_bow = skeleton_data["bow_draw"] >= skeleton_data["bow_draw_speed"]
-    if mouse_presses[0]:
-        if drawing_bow:
+    
+        
+    if shoot:
+        if skeleton_data["active_item"] == None:
+            print("Making new!")
+            skeleton_data["active_item"] = skeleton_data["selected_item"](copy.deepcopy(skeleton_data["pos"]), 
+                                                                            copy.deepcopy(main_player["offset"]), 
+                                                                            skeleton_data["body_strength"])
+        strength_to_shoot = skeleton_data["active_item"]["cost"] < skeleton_data["strength"]
+        print(f"Can shoot: {strength_to_shoot}")
+        if strength_to_shoot:
             #Start drawing
-            if skeleton_data["active_item"] == None:
-                skeleton_data["active_item"] = skeleton_data["selected_item"](skeleton_data["pos"], 
-                                                                              main_player["offset"], 
-                                                                              skeleton_data["body_strength"])
-            if skeleton_data["active_item"]["cost"] < skeleton_data["strength"]:
-                skeleton_data["strength"] -= skeleton_data["active_item"]["cost"]
-            
-                #Update arrow
-                skeleton_data["active_item"]["update"](skeleton_data["active_item"])
-            else:
-                end_shooting = True
-        if not drawing_bow:
-            if skeleton_data["bow_draw"] == 0:
-                pass#pygame.mixer.Sound.play(sounds["strength_spell"])
             skeleton_data["bow_draw"] += 1
+            if skeleton_data["bow_draw"] > skeleton_data["bow_draw_speed"]:
+                if not skeleton_data["active_item"]["active"]:
+                    skeleton_data["strength"] -= skeleton_data["active_item"]["cost"]
+                    skeleton_data["active_item"]["active"] = True
+                    print("Made active")
+        #Update arrow
+        if skeleton_data["active_item"]["active"]:
+            still_active = skeleton_data["active_item"]["update"](skeleton_data["active_item"])
+            if not still_active:
+                del skeleton_data["active_item"]
+                skeleton_data["active_item"] = None
+                end_shooting = True
+            
+            
+            print("Hmmmm")
     else:
         end_shooting = True
     if end_shooting:
@@ -111,7 +144,10 @@ def update_skeleton(skeleton_data):
         if "draw" not in skeleton_data["image_state"]:
             skeleton_data["image_state"] = f"draw_{skeleton_data['image_state']}"
         if skeleton_data["bow_draw"] < skeleton_data["bow_draw_speed"]:
-            skeleton_data["image_frame_offset"] = int((7/skeleton_data["bow_draw_speed"]) * skeleton_data["bow_draw"])
+            skeleton_data["image_frame_offset"] = int((8/skeleton_data["bow_draw_speed"]) * skeleton_data["bow_draw"])
+            #print(skeleton_data["image_frame_offset"])
+            if skeleton_data["image_frame_offset"] == 7:
+                skeleton_data["image_frame_offset"] = 0
             #skeleton_data["image_frame_offset"] %= 7
     else:
         if "draw" in skeleton_data["image_state"]:
@@ -126,7 +162,7 @@ def init_skeleton(pos):
     #skeleton pos from would pos
     skeleton_data["pos"] = pos
     skeleton_data["speed"] = [0,0]
-    skeleton_data["walk_speed"] = 6
+    skeleton_data["walk_speed"] = 5
     skeleton_data["jump_speed"] = 15
     skeleton_data["wanted_speed"] = [0,0]
     skeleton_data["display_size"] = [64,64]
@@ -136,20 +172,20 @@ def init_skeleton(pos):
     
     skeleton_data["body_strength"] = 5
     skeleton_data["strength"] = 90
-    skeleton_data["strength_regen"] = .2
+    skeleton_data["strength_regen"] = .5
     skeleton_data["max_strength"] = 100
     skeleton_data["bow_draw_speed"] = 25
     skeleton_data["bow_draw"] = 0
     
     skeleton_images = {"body": "/body/male/skeleton",
-                       "bow": "/weapons/right hand/either/bow_skeleton",
-                       "arrow": "/weapons/left hand/either/arrow_skeleton"}
+                       "bow": "/weapons/right hand/either/bow_skeleton"}
+    #                   "arrow": "/weapons/left hand/either/arrow_skeleton"}
     
     #skeleton_images = {"body": "/body/male/light"}
     
     skeleton_data["images"] = skeleton_images
     skeleton_data["image_base_path"] = "/player/Universal-LPC-spritesheet"
-    skeleton_data["image_states"] = {"left":9, "right": 11, "draw_left": 18, "draw_right": 20}
+    skeleton_data["image_states"] = {"left":9, "right": 11, "draw_left": 17, "draw_right": 19}
     skeleton_data["image_state"] = "left"
     skeleton_data["image_frame_offset"] = 0
     skeleton_data["skeleton_is_walking"] = False
