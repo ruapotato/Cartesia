@@ -699,8 +699,9 @@ def delete_block(pos,block_index,chunk_index):
     block_data = chunk_block_data[chunk_index]
     block_data[block_index[0]][block_index[1]] = 1
     surface = chunk_surfaces[chunk_index]
-    #surface.blit(block_images[1], [block_index[0]*block_size,block_index[1]*block_size])
     pygame.draw.rect(surface, (0,0,0,0), [block_index[0]*block_size, block_index[1]*block_size, block_size, block_size])
+    surface.blit(block_images[1], [block_index[0]*block_size,block_index[1]*block_size])
+    
     print(F"Deleted: {pos} {chunk_index} {block_index}")
 
 
