@@ -308,7 +308,7 @@ def draw_sun(surface, chunk_address, offset, undraw=False):
         else:
             time_offset = game_time
         y_pos = time_offset * change_in_display - offset[1] - display_height//2
-        print(y_pos, display_height, game_time)
+        #print(y_pos, display_height, game_time)
         sun_pos = [x_pos + offset[0], y_pos]
     
     #print(sun_pos)
@@ -1130,7 +1130,7 @@ def init(SEED, display_scale=1, FULLSCREEN=False):
     DEBUG = True
     gen_chunk.set_seed(SEED)
     
-    fps = 60
+    fps = 30
     #Test at hight FPS
     #if DEBUG:
     #    fps = 60
