@@ -291,12 +291,13 @@ def draw_sun(surface, chunk_address, offset, undraw=False):
     global sun
     
     max_time = (255//2)
-    change_in_display = (display_width )//max_time
-    y_pos = main_player["offset"][1]
+    change_in_display = (display_height )//max_time
+    x_pos = main_player["offset"][0]
     if undraw:
-        sun_pos = [last_game_time * change_in_display + offset[0] + display_width//2, y_pos - offset[1]]
+        sun_pos = [x_pos + offset[0], last_game_time * change_in_display - offset[1] - display_height//2]
     else:
-        sun_pos = [game_time * change_in_display + offset[0] + display_width//2, y_pos - offset[1]]
+        #sun_pos = [game_time * change_in_display + offset[0] + display_width//2, y_pos - offset[1]]
+        sun_pos = [x_pos + offset[0], game_time * change_in_display - offset[1] - display_height//2]
     
     #print(sun_pos)
     y_offset = sun_pos[1] - (chunk_address[1] * chunk_size * -1)
