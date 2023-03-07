@@ -1,29 +1,28 @@
 #AGPL by David Hamner 2023
 
-def process_mine_cast(caster_data, end_spell=False):
+def process_mine_cast(caster_data, target, end=False):
     spell_casted = caster_data["magic_part_casted"] >= caster_data["magic_cast_speed"]
     if spell_casted:
         #Load new spell
-        if caster_data["active_spell"] == None:
-            caster_data["active_spell"] = init_mine_spell(list(pygame.mouse.get_pos()),
-                                                                        caster_data["spell_strength"])
-        if caster_data["active_spell"]["cost"] < caster_data["magic"]:
-            caster_data["magic"] -= caster_data["active_spell"]["cost"]
+        if caster_data["active_item"] == None:
+            caster_data["active_item"] = init_mine_spell(list(target), caster_data["spell_strength"])
+        if caster_data["active_item"]["cost"] < caster_data["magic"]:
+            caster_data["magic"] -= caster_data["active_item"]["cost"]
         
             #Update spell
-            caster_data["active_spell"]["update"](caster_data["active_spell"])
+            caster_data["active_item"]["update"](caster_data["active_item"])
         else:
-            end_spell = True
+            end = True
     if not spell_casted:
         if caster_data["magic_part_casted"] == 0:
             pygame.mixer.Sound.play(sounds["magic_spell"])
         caster_data["magic_part_casted"] += 1
 
-    if end_spell:
+    if end:
         caster_data["magic_part_casted"] = 0
-        if caster_data["active_spell"] != None:
-            del caster_data["active_spell"]
-            caster_data["active_spell"] = None
+        if caster_data["active_item"] != None:
+            del caster_data["active_item"]
+            caster_data["active_item"] = None
         
     #Update frame
     if caster_data["magic_part_casted"] != 0:
@@ -39,7 +38,7 @@ def process_mine_cast(caster_data, end_spell=False):
 
 def update_mine_spell(mine_spell_data):
     global gameDisplay
-    mouse_presses = pygame.mouse.get_pressed()
+    #mouse_presses = pygame.mouse.get_pressed()
 
     event_pos = list(pygame.mouse.get_pos())
     block_type,pos,block_index,chunk_index = get_block_at(event_pos)

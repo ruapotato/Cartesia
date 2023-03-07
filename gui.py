@@ -912,6 +912,10 @@ def main_interface():
                     quit()
                 
                 if not pre_game:
+                    # Switch inventory
+                    if key in main_player["inventory"]:
+                        print(f"Switching active item to {key}")
+                        main_player["selected_item"] = main_player["inventory"][key][1]
                     # Move left
                     if not main_player["magic_part_casted"]:
                         if key_name == pygame.K_LEFT or key_name == pygame.K_a:

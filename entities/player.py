@@ -4,13 +4,14 @@ def init_player(offset):
     player_data = {}
     #player offset from would pos
     player_data["offset"] = offset
+    player_data["pos"] = player_data["offset"]
     player_data["speed"] = [0,0]
     player_data["live"] = 100
     player_data["wanted_speed"] = [0,0]
     player_data["display_size"] = [64,64]
     player_data["hitbox_size"] = [32,64]
-    player_data["selected_spell"] = process_mine_cast
-    player_data["active_spell"] = None
+    
+    player_data["active_item"] = None
     player_data["spell_strength"] = 5
     player_data["magic"] = 90
     player_data["magic_regen"] = .2
@@ -19,6 +20,18 @@ def init_player(offset):
     player_data["magic_part_casted"] = 0
     
     
+    player_data["body_strength"] = 5
+    player_data["strength"] = 90
+    player_data["strength_regen"] = .5
+    player_data["max_strength"] = 100
+    player_data["bow_draw_speed"] = 25
+    player_data["bow_draw"] = 0
+    
+    
+    player_data["inventory"] = {'1': ["mine", process_mine_cast],
+                                '2': ["bow", process_bow_shooting]}
+    
+    player_data["selected_item"] = player_data["inventory"]['1'][1]
     player_images = {"body": "/body/male/light",
                      "ears": "/body/male/ears/bigears_light",
                      "eyes": "/body/male/eyes/brown",
@@ -34,7 +47,7 @@ def init_player(offset):
     
     player_data["images"] = player_images
     player_data["image_base_path"] = "/player/Universal-LPC-spritesheet"
-    player_data["image_states"] = {"left":9, "right": 11, "cast_left": 1, "cast_right": 3}
+    player_data["image_states"] = {"left":9, "right": 11, "cast_left": 1, "cast_right": 3, "draw_left": 17, "draw_right": 19}
     player_data["image_state"] = "left"
     player_data["image_frame_offset"] = 0
     player_data["player_is_walking"] = False
@@ -110,14 +123,19 @@ def update_player(player_data):
     if player_data["magic"] < player_data["max_magic"]:
         player_data["magic"] += player_data["magic_regen"]
     
+    #Update strength
+    if player_data["strength"] < player_data["max_strength"]:
+        player_data["strength"] += player_data["strength_regen"]
+    
     # Update ative active_item
     mouse_presses = pygame.mouse.get_pressed()
     end_spell = False
     
     if mouse_presses[0]:
-        player_data["selected_spell"](player_data)
-    elif player_data["magic_part_casted"] != 0:
-        player_data["selected_spell"](player_data, end_spell=True)
+        player_data["selected_item"](player_data, list(pygame.mouse.get_pos()))
+    #elif player_data["magic_part_casted"] != 0:
+    else:
+        player_data["selected_item"](player_data, list(pygame.mouse.get_pos()), end=True)
    
     if player_data["player_is_walking"]:
         player_data["image_frame_offset"] += 1

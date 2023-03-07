@@ -1,12 +1,11 @@
 #AGPL by David Hamner 2023
 
 
-def process_bow_shooting(shooter_data, end_shooting=False):
-    end_shooting = False
+def process_bow_shooting(shooter_data, target, end=False):
     if shooter_data["active_item"] == None:
         #print("Making new!")
         shooter_data["active_item"] = init_bow(copy.deepcopy(shooter_data["pos"]), 
-                                                                        copy.deepcopy(main_player["offset"]), 
+                                                                        copy.deepcopy(target), 
                                                                         shooter_data["body_strength"])
     strength_to_shoot = shooter_data["active_item"]["cost"] < shooter_data["strength"]
     #print(f"Can shoot: {strength_to_shoot}")
@@ -25,9 +24,9 @@ def process_bow_shooting(shooter_data, end_shooting=False):
         if not still_active:
             del shooter_data["active_item"]
             shooter_data["active_item"] = None
-            end_shooting = True
+            end = True
     
-    if end_shooting:
+    if end:
         shooter_data["bow_draw"] = 0
         if shooter_data["active_item"] != None:
             del shooter_data["active_item"]

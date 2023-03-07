@@ -105,10 +105,10 @@ def update_skeleton(skeleton_data):
     
     #process shooting
     if shoot:
-        skeleton_data["shoot_bow"](skeleton_data)
+        skeleton_data["shoot_bow"](skeleton_data, main_player["offset"])
     
     elif skeleton_data["active_item"] != None:
-        skeleton_data["shoot_bow"](skeleton_data, end_shooting=True)
+        skeleton_data["shoot_bow"](skeleton_data, main_player["offset"], end_shooting=True)
         
     if skeleton_data["skeleton_is_walking"]:
         skeleton_data["image_frame_offset"] += 1
