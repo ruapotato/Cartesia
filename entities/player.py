@@ -9,7 +9,7 @@ def init_player(offset):
     player_data["wanted_speed"] = [0,0]
     player_data["display_size"] = [64,64]
     player_data["hitbox_size"] = [32,64]
-    player_data["selected_spell"] = init_mine_spell
+    player_data["selected_spell"] = process_mine_cast
     player_data["active_spell"] = None
     player_data["spell_strength"] = 5
     player_data["magic"] = 90
@@ -17,6 +17,7 @@ def init_player(offset):
     player_data["max_magic"] = 100
     player_data["magic_cast_speed"] = 25
     player_data["magic_part_casted"] = 0
+    
     
     player_images = {"body": "/body/male/light",
                      "ears": "/body/male/ears/bigears_light",
@@ -112,43 +113,12 @@ def update_player(player_data):
     # Update ative active_item
     mouse_presses = pygame.mouse.get_pressed()
     end_spell = False
-    spell_casted = player_data["magic_part_casted"] >= player_data["magic_cast_speed"]
-    if mouse_presses[0]:
-        if spell_casted:
-            #Load new spell
-            if player_data["active_spell"] == None:
-                player_data["active_spell"] = player_data["selected_spell"](list(pygame.mouse.get_pos()),
-                                                                            player_data["spell_strength"])
-            if player_data["active_spell"]["cost"] < player_data["magic"]:
-                player_data["magic"] -= player_data["active_spell"]["cost"]
-            
-                #Update spell
-                player_data["active_spell"]["update"](player_data["active_spell"])
-            else:
-                end_spell = True
-        if not spell_casted:
-            if player_data["magic_part_casted"] == 0:
-                pygame.mixer.Sound.play(sounds["magic_spell"])
-            player_data["magic_part_casted"] += 1
-    else:
-        end_spell = True
-    if end_spell:
-        player_data["magic_part_casted"] = 0
-        if player_data["active_spell"] != None:
-            del player_data["active_spell"]
-            player_data["active_spell"] = None
-        
-    #Update frame
-    if player_data["magic_part_casted"] != 0:
-        if "cast" not in player_data["image_state"]:
-            player_data["image_state"] = f"cast_{player_data['image_state']}"
-        if player_data["magic_part_casted"] < player_data["magic_cast_speed"]:
-            player_data["image_frame_offset"] = int((7/player_data["magic_cast_speed"]) * player_data["magic_part_casted"])
-            #player_data["image_frame_offset"] %= 7
-    else:
-        if "cast" in player_data["image_state"]:
-            player_data["image_state"] = player_data["image_state"].split("_")[-1]
     
+    if mouse_presses[0]:
+        player_data["selected_spell"](player_data)
+    elif player_data["magic_part_casted"] != 0:
+        player_data["selected_spell"](player_data, end_spell=True)
+   
     if player_data["player_is_walking"]:
         player_data["image_frame_offset"] += 1
         player_data["image_frame_offset"] %= 9

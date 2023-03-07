@@ -1,6 +1,55 @@
 #AGPL by David Hamner 2023
 
-def update_bow(bow_data):
+
+def process_bow_shooting(shooter_data, end_shooting=False):
+    end_shooting = False
+    if shooter_data["active_item"] == None:
+        #print("Making new!")
+        shooter_data["active_item"] = init_bow(copy.deepcopy(shooter_data["pos"]), 
+                                                                        copy.deepcopy(main_player["offset"]), 
+                                                                        shooter_data["body_strength"])
+    strength_to_shoot = shooter_data["active_item"]["cost"] < shooter_data["strength"]
+    #print(f"Can shoot: {strength_to_shoot}")
+    if strength_to_shoot:
+        #Start drawing
+        shooter_data["bow_draw"] += 1
+        if shooter_data["bow_draw"] > shooter_data["bow_draw_speed"]:
+            if not shooter_data["active_item"]["active"]:
+                shooter_data["strength"] -= shooter_data["active_item"]["cost"]
+                shooter_data["active_item"]["active"] = True
+                #print("Made active")
+    #Update arrow
+    if shooter_data["active_item"]["active"]:
+        #still_active = shooter_data["active_item"]["update"](shooter_data["active_item"])
+        still_active = update_arrow(shooter_data["active_item"])
+        if not still_active:
+            del shooter_data["active_item"]
+            shooter_data["active_item"] = None
+            end_shooting = True
+    
+    if end_shooting:
+        shooter_data["bow_draw"] = 0
+        if shooter_data["active_item"] != None:
+            del shooter_data["active_item"]
+            shooter_data["active_item"] = None
+        
+    #Update frame
+    if shooter_data["bow_draw"] != 0:
+        if "draw" not in shooter_data["image_state"]:
+            shooter_data["image_state"] = f"draw_{shooter_data['image_state']}"
+        if shooter_data["bow_draw"] < shooter_data["bow_draw_speed"]:
+            shooter_data["image_frame_offset"] = int((8/shooter_data["bow_draw_speed"]) * shooter_data["bow_draw"])
+            #print(shooter_data["image_frame_offset"])
+            if shooter_data["image_frame_offset"] == 7:
+                shooter_data["image_frame_offset"] = 0
+            #shooter_data["image_frame_offset"] %= 7
+    else:
+        if "draw" in shooter_data["image_state"]:
+            shooter_data["image_state"] = shooter_data["image_state"].split("_")[-1]
+
+
+
+def update_arrow(bow_data):
     global gameDisplay
     
     
@@ -85,6 +134,6 @@ def init_bow(from_pos, to_pos, power):
     bow_data["block_mine_type"] = {2:10, 
                                        3:10,
                                        4:40}
-    bow_data["update"] = update_bow
+    bow_data["update"] = process_bow_shooting
     return(bow_data)
 

@@ -1076,15 +1076,7 @@ for entry in os.scandir('spells'):
         python_script = "\n".join(python_script)
         exec(python_script)
 
-#Load into this namespace all needed entities
-for entry in os.scandir('entities'):
-    if entry.is_file():
-        path = f"{script_path}/entities/{entry.name}"
-        print(path)
-        with open(path) as fh:
-            python_script = fh.readlines()
-        python_script = "\n".join(python_script)
-        exec(python_script)
+
 #Load into this namespace all needed items
 for entry in os.scandir('items'):
     if entry.is_file():
@@ -1094,6 +1086,18 @@ for entry in os.scandir('items'):
             python_script = fh.readlines()
         python_script = "\n".join(python_script)
         exec(python_script)
+
+
+#Load into this namespace all needed entities
+for entry in os.scandir('entities'):
+    if entry.is_file():
+        path = f"{script_path}/entities/{entry.name}"
+        print(path)
+        with open(path) as fh:
+            python_script = fh.readlines()
+        python_script = "\n".join(python_script)
+        exec(python_script)
+
 
 
 def init(SEED, display_scale=1, FULLSCREEN=False):

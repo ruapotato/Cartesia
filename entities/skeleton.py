@@ -101,59 +101,19 @@ def update_skeleton(skeleton_data):
         skeleton_data["strength"] += skeleton_data["strength_regen"]
     
     # Update active_item
-    mouse_presses = pygame.mouse.get_pressed()
-    end_shooting = False
+    #mouse_presses = pygame.mouse.get_pressed()
     
-        
+    #process shooting
     if shoot:
-        if skeleton_data["active_item"] == None:
-            #print("Making new!")
-            skeleton_data["active_item"] = skeleton_data["selected_item"](copy.deepcopy(skeleton_data["pos"]), 
-                                                                            copy.deepcopy(main_player["offset"]), 
-                                                                            skeleton_data["body_strength"])
-        strength_to_shoot = skeleton_data["active_item"]["cost"] < skeleton_data["strength"]
-        #print(f"Can shoot: {strength_to_shoot}")
-        if strength_to_shoot:
-            #Start drawing
-            skeleton_data["bow_draw"] += 1
-            if skeleton_data["bow_draw"] > skeleton_data["bow_draw_speed"]:
-                if not skeleton_data["active_item"]["active"]:
-                    skeleton_data["strength"] -= skeleton_data["active_item"]["cost"]
-                    skeleton_data["active_item"]["active"] = True
-                    #print("Made active")
-        #Update arrow
-        if skeleton_data["active_item"]["active"]:
-            still_active = skeleton_data["active_item"]["update"](skeleton_data["active_item"])
-            if not still_active:
-                del skeleton_data["active_item"]
-                skeleton_data["active_item"] = None
-                end_shooting = True
-
-    else:
-        end_shooting = True
-    if end_shooting:
-        skeleton_data["bow_draw"] = 0
-        if skeleton_data["active_item"] != None:
-            del skeleton_data["active_item"]
-            skeleton_data["active_item"] = None
-        
-    #Update frame
-    if skeleton_data["bow_draw"] != 0:
-        if "draw" not in skeleton_data["image_state"]:
-            skeleton_data["image_state"] = f"draw_{skeleton_data['image_state']}"
-        if skeleton_data["bow_draw"] < skeleton_data["bow_draw_speed"]:
-            skeleton_data["image_frame_offset"] = int((8/skeleton_data["bow_draw_speed"]) * skeleton_data["bow_draw"])
-            #print(skeleton_data["image_frame_offset"])
-            if skeleton_data["image_frame_offset"] == 7:
-                skeleton_data["image_frame_offset"] = 0
-            #skeleton_data["image_frame_offset"] %= 7
-    else:
-        if "draw" in skeleton_data["image_state"]:
-            skeleton_data["image_state"] = skeleton_data["image_state"].split("_")[-1]
+        skeleton_data["shoot_bow"](skeleton_data)
     
+    elif skeleton_data["active_item"] != None:
+        skeleton_data["shoot_bow"](skeleton_data, end_shooting=True)
+        
     if skeleton_data["skeleton_is_walking"]:
         skeleton_data["image_frame_offset"] += 1
         skeleton_data["image_frame_offset"] %= 9
+
 def init_skeleton(pos):
     global world_xy
     skeleton_data = {}
@@ -166,7 +126,7 @@ def init_skeleton(pos):
     skeleton_data["display_size"] = [64,64]
     skeleton_data["hitbox_size"] = [32,64]
     skeleton_data["active_item"] = None
-    skeleton_data["selected_item"] = init_bow
+    skeleton_data["shoot_bow"] = process_bow_shooting
     
     skeleton_data["body_strength"] = 5
     skeleton_data["strength"] = 90

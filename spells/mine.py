@@ -1,5 +1,42 @@
 #AGPL by David Hamner 2023
 
+def process_mine_cast(caster_data, end_spell=False):
+    spell_casted = caster_data["magic_part_casted"] >= caster_data["magic_cast_speed"]
+    if spell_casted:
+        #Load new spell
+        if caster_data["active_spell"] == None:
+            caster_data["active_spell"] = init_mine_spell(list(pygame.mouse.get_pos()),
+                                                                        caster_data["spell_strength"])
+        if caster_data["active_spell"]["cost"] < caster_data["magic"]:
+            caster_data["magic"] -= caster_data["active_spell"]["cost"]
+        
+            #Update spell
+            caster_data["active_spell"]["update"](caster_data["active_spell"])
+        else:
+            end_spell = True
+    if not spell_casted:
+        if caster_data["magic_part_casted"] == 0:
+            pygame.mixer.Sound.play(sounds["magic_spell"])
+        caster_data["magic_part_casted"] += 1
+
+    if end_spell:
+        caster_data["magic_part_casted"] = 0
+        if caster_data["active_spell"] != None:
+            del caster_data["active_spell"]
+            caster_data["active_spell"] = None
+        
+    #Update frame
+    if caster_data["magic_part_casted"] != 0:
+        if "cast" not in caster_data["image_state"]:
+            caster_data["image_state"] = f"cast_{caster_data['image_state']}"
+        if caster_data["magic_part_casted"] < caster_data["magic_cast_speed"]:
+            caster_data["image_frame_offset"] = int((7/caster_data["magic_cast_speed"]) * caster_data["magic_part_casted"])
+            #caster_data["image_frame_offset"] %= 7
+    else:
+        if "cast" in caster_data["image_state"]:
+            caster_data["image_state"] = caster_data["image_state"].split("_")[-1]
+
+
 def update_mine_spell(mine_spell_data):
     global gameDisplay
     mouse_presses = pygame.mouse.get_pressed()
