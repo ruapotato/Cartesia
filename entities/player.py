@@ -40,7 +40,8 @@ def init_player(offset):
                      "shirt": "/torso/leather/chest_male",
                      "shoulders": "/torso/leather/shoulders_male",
                      "pants": "/legs/skirt/male/robe_skirt_male",
-                     "wand": "/weapons/right hand/male/woodwand_male"}
+                     "wand": "/weapons/right hand/male/woodwand_male",
+                     "bow": "/weapons/right hand/either/bow"}
     
     
     #player_images = {"body": "/body/male/light"}

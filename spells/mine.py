@@ -4,7 +4,7 @@ def process_mine_cast(caster_data, target, end=False):
     spell_casted = caster_data["magic_part_casted"] >= caster_data["magic_cast_speed"]
     if spell_casted:
         #Load new spell
-        if caster_data["active_item"] == None:
+        if caster_data["active_item"] == None and not end:
             caster_data["active_item"] = init_mine_spell(list(target), caster_data["spell_strength"])
         if caster_data["active_item"]["cost"] < caster_data["magic"]:
             caster_data["magic"] -= caster_data["active_item"]["cost"]
@@ -13,7 +13,7 @@ def process_mine_cast(caster_data, target, end=False):
             caster_data["active_item"]["update"](caster_data["active_item"])
         else:
             end = True
-    if not spell_casted:
+    if not spell_casted and not end:
         if caster_data["magic_part_casted"] == 0:
             pygame.mixer.Sound.play(sounds["magic_spell"])
         caster_data["magic_part_casted"] += 1
