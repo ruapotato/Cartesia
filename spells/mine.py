@@ -2,6 +2,9 @@
 
 def process_mine_cast(caster_data, target, end=False):
     spell_casted = caster_data["magic_part_casted"] >= caster_data["magic_cast_speed"]
+    if not end:
+        caster_data["wanted_speed"] = [0,0]
+        caster_data["player_is_walking"] = False
     if spell_casted:
         #Load new spell
         if caster_data["active_item"] == None and not end:
@@ -25,15 +28,19 @@ def process_mine_cast(caster_data, target, end=False):
             caster_data["active_item"] = None
         
     #Update frame
-    if caster_data["magic_part_casted"] != 0:
-        if "cast" not in caster_data["image_state"]:
-            caster_data["image_state"] = f"cast_{caster_data['image_state']}"
-        if caster_data["magic_part_casted"] < caster_data["magic_cast_speed"]:
-            caster_data["image_frame_offset"] = int((7/caster_data["magic_cast_speed"]) * caster_data["magic_part_casted"])
-            #caster_data["image_frame_offset"] %= 7
-    else:
-        if "cast" in caster_data["image_state"]:
-            caster_data["image_state"] = caster_data["image_state"].split("_")[-1]
+    if not end:
+        if caster_data["magic_part_casted"] != 0:
+            if "cast" not in caster_data["image_state"]:
+                if "left" in caster_data["image_state"]:
+                    caster_data["image_state"] = f"cast_left"
+                else:
+                    caster_data["image_state"] = f"cast_right"
+            if caster_data["magic_part_casted"] < caster_data["magic_cast_speed"]:
+                caster_data["image_frame_offset"] = int((7/caster_data["magic_cast_speed"]) * caster_data["magic_part_casted"])
+                #caster_data["image_frame_offset"] %= 7
+        else:
+            if "cast" in caster_data["image_state"]:
+                caster_data["image_state"] = caster_data["image_state"].split("_")[-1]
 
 
 def update_mine_spell(mine_spell_data):

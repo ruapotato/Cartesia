@@ -32,6 +32,8 @@ def init_player(offset):
                                 '2': ["bow", process_bow_shooting]}
     
     player_data["selected_item"] = player_data["inventory"]['1'][1]
+    player_data["last_selected_item"] = player_data["inventory"]['1'][1]
+    
     player_images = {"body": "/body/male/light",
                      "ears": "/body/male/ears/bigears_light",
                      "eyes": "/body/male/eyes/brown",
@@ -70,6 +72,39 @@ def update_player(player_data):
     global DEBUG
     global dot
     
+    
+    
+    
+    
+    #Update magic
+    if player_data["magic"] < player_data["max_magic"]:
+        player_data["magic"] += player_data["magic_regen"]
+    
+    #Update strength
+    if player_data["strength"] < player_data["max_strength"]:
+        player_data["strength"] += player_data["strength_regen"]
+    
+    # Update ative active_item
+    mouse_presses = pygame.mouse.get_pressed()
+    end_spell = False
+    
+    #Handel inventory change
+    if player_data["last_selected_item"] != player_data["selected_item"]:
+        player_data["last_selected_item"](player_data, list(pygame.mouse.get_pos()), end=True)
+        if player_data["active_item"] != None:
+            del player_data["active_item"]
+            player_data["active_item"] = None
+        player_data["last_selected_item"] = player_data["selected_item"]
+    
+    if mouse_presses[0]:
+        player_data["selected_item"](player_data, list(pygame.mouse.get_pos()))
+    #elif player_data["magic_part_casted"] != 0:
+    else:
+        player_data["selected_item"](player_data, list(pygame.mouse.get_pos()), end=True)
+    
+    
+    
+    #Speed and block hit checking
     #print(f"info: {player_data['is_climbing']}")
     x_speed_change = 0
     y_speed_change = 0
@@ -105,6 +140,7 @@ def update_player(player_data):
                                                                                              is_climbing,
                                                                                              can_jump,
                                                                                              is_jumping)
+    #Push out of blocks if we where clipping
     if pos_change != player_data["offset"]:
         world_xy[1] += player_data["offset"][1] - pos_change[1]
         world_xy[0] += player_data["offset"][0] - pos_change[0]
@@ -120,23 +156,7 @@ def update_player(player_data):
         world_xy[0] += int(player_data["speed"][0])
         world_xy[1] += int(player_data["speed"][1])
 
-    #Update magic
-    if player_data["magic"] < player_data["max_magic"]:
-        player_data["magic"] += player_data["magic_regen"]
     
-    #Update strength
-    if player_data["strength"] < player_data["max_strength"]:
-        player_data["strength"] += player_data["strength_regen"]
-    
-    # Update ative active_item
-    mouse_presses = pygame.mouse.get_pressed()
-    end_spell = False
-    
-    if mouse_presses[0]:
-        player_data["selected_item"](player_data, list(pygame.mouse.get_pos()))
-    #elif player_data["magic_part_casted"] != 0:
-    else:
-        player_data["selected_item"](player_data, list(pygame.mouse.get_pos()), end=True)
    
     if player_data["player_is_walking"]:
         player_data["image_frame_offset"] += 1
