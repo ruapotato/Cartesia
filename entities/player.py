@@ -6,7 +6,7 @@ def init_player(offset):
     player_data["offset"] = offset
     player_data["pos"] = player_data["offset"]
     player_data["speed"] = [0,0]
-    player_data["live"] = 100
+    player_data["life"] = 100
     player_data["wanted_speed"] = [0,0]
     player_data["display_size"] = [64,64]
     player_data["hitbox_size"] = [32,64]

@@ -9,9 +9,9 @@ def process_bow_shooting(shooter_data, target, end=False):
     if not end:
         if shooter_data["active_item"] == None:
             #print("Making new!")
-            shooter_data["active_item"] = init_bow(copy.deepcopy(shooter_data["pos"]), 
-                                                                            copy.deepcopy(target), 
-                                                                            shooter_data["body_strength"])
+            shooter_data["active_item"] = init_bow(shooter_data["body_strength"])
+
+            
         strength_to_shoot = shooter_data["active_item"]["cost"] < shooter_data["strength"]
         #print(f"Can shoot: {strength_to_shoot}")
         if strength_to_shoot:
@@ -25,6 +25,16 @@ def process_bow_shooting(shooter_data, target, end=False):
     
     #Update arrow
     if shooter_data["active_item"] and shooter_data["active_item"]["active"]:
+        #Set target
+        if shooter_data["active_item"]["to_pos"] == None:
+            shooter_data["active_item"]["to_pos"] = copy.deepcopy(target)
+            shooter_data["active_item"]["pos"] = copy.deepcopy(shooter_data["pos"])
+            first_new_point = get_point_along(shooter_data["active_item"]["pos"], shooter_data["active_item"]["to_pos"], shooter_data["active_item"]["speed"])
+            speed_in_x = shooter_data["active_item"]["pos"][0] - first_new_point[0]
+            speed_in_y = shooter_data["active_item"]["pos"][1] - first_new_point[1]
+            shooter_data["active_item"]["bow_speed_xy"] = [speed_in_x, speed_in_y]
+            shooter_data["active_item"]["last_world_pos"] = copy.deepcopy(world_xy)
+            
         #still_active = shooter_data["active_item"]["update"](shooter_data["active_item"])
         still_active = update_arrow(shooter_data["active_item"])
         if not still_active:
@@ -85,7 +95,7 @@ def update_arrow(bow_data):
         #print(abs(new_point[0] - main_player["offset"][0]))
         if abs(new_point[0] - main_player["offset"][0]) < 10 and abs(new_point[1] - main_player["offset"][1]) < 10:
             print("Killl")
-            main_player["live"] -= bow_data["damage"]
+            main_player["life"] -= bow_data["damage"]
             return(False)
         else:
             bow_data["pos"] = new_point
@@ -118,20 +128,16 @@ def update_arrow(bow_data):
     return(True)
 
 
-def init_bow(from_pos, to_pos, power):
+def init_bow(power):
     bow_data = {}
     #bow pos from would pos
     texterus_path = f"{script_path}/img/player/Universal-LPC-spritesheet"
     bow_data["img"] = f"{texterus_path}/weapons/left hand/either/single_arrow.png"
-    bow_data["pos"] = from_pos
-    bow_data["to_pos"] = to_pos
+    bow_data["pos"] = None
+    bow_data["to_pos"] = None # Set after arrow is shot
     bow_data["speed"] = power * 3.5
     
-    first_new_point = get_point_along(bow_data["pos"], bow_data["to_pos"], bow_data["speed"])
-    
-    speed_in_x = bow_data["pos"][0] - first_new_point[0]
-    speed_in_y = bow_data["pos"][1] - first_new_point[1]
-    bow_data["bow_speed_xy"] = [speed_in_x, speed_in_y]
+
     bow_data["cost"] = 50
     
     bow_data["active"] = False
@@ -140,9 +146,9 @@ def init_bow(from_pos, to_pos, power):
     bow_data["target"] = None
     bow_data["range"] = power
     
-    bow_data["damage"] =  power
+    bow_data["damage"] =  power * 4
     bow_data["facing"] = "left"
-    bow_data["last_world_pos"] = copy.deepcopy(world_xy)
+    
     bow_data["block_mine_type"] = {2:10, 
                                        3:10,
                                        4:40}

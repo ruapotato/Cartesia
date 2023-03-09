@@ -789,7 +789,7 @@ def text_objects(text, font, color="Black"):
     textSurface = font.render(text, True, pygame.color.Color(color))
     return textSurface, textSurface.get_rect()
 
-def value_bar(x,y,value, from_right=True, size=10, px_multiplayer=1.6, hide_text=False, unit="%"):
+def value_bar(x,y,value, from_right=True, size=10, px_multiplayer=1.6, hide_text=False, unit="%", color="black"):
     x = int(x)
     y = int(y)
     
@@ -804,7 +804,7 @@ def value_bar(x,y,value, from_right=True, size=10, px_multiplayer=1.6, hide_text
         #Grow from right
         x = x - value
     
-    pygame.draw.rect(gameDisplay, pygame.color.Color("black"),(x,y,value,size))
+    pygame.draw.rect(gameDisplay, pygame.color.Color(color),(x,y,value,size))
     if not hide_text:
         smallText = pygame.font.SysFont("comicsansms",15)
         textSurf, textRect = text_objects(value_txt, smallText, color="white")
@@ -1040,7 +1040,9 @@ def main_interface():
         
 
         #Draw interface stuff
-        value_bar(display_width - 5,5,main_player["magic"])
+        value_bar(display_width - 7,5,main_player["magic"], color="blue")
+        value_bar(display_width - 7,15,main_player["strength"])
+        value_bar(7,15,main_player["life"], color="red", from_right=False)
         #World lighting
         #darkness.blit(world_light, get_world_light_level())
         #print(f"Light level: {get_world_light_level()}")
@@ -1192,8 +1194,8 @@ def init(SEED, display_scale=1, FULLSCREEN=False):
     sounds = {"magic_spell": pygame.mixer.Sound(f"{script_path}/sounds/80-CC0-RPG-SFX/creature_die_01.ogg")}
 
     
-    light_source = pygame.image.load(f"{script_path}/img/light4.png").convert()
-    light_source.set_colorkey((0,0,0))
+    #light_source = pygame.image.load(f"{script_path}/img/light.png").convert()
+    #light_source.set_colorkey((0,0,0))
     
     
     sun = pygame.transform.scale(pygame.image.load(f"{script_path}/img/sun.png").convert_alpha(), [display_width, display_height])
@@ -1201,7 +1203,7 @@ def init(SEED, display_scale=1, FULLSCREEN=False):
     #sun = pygame.Surface((200, 200),flags=pygame.SRCALPHA)
     #sun.fill((0,0,0,0))
     #pygame.draw.circle(sun, (0,0,0,255//2), (100, 100), 100)
-    #light_source = pygame.image.load(f"{script_path}/img/light.png").convert_alpha()
+    light_source = pygame.image.load(f"{script_path}/img/light.png").convert_alpha()
     #sun = pygame.image.load(f"{script_path}/img/light.png").convert_alpha()
     
     
