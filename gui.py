@@ -5,6 +5,7 @@ import time
 import pygame
 import copy
 import os
+from datetime import datetime
 #import gen_chunk
 import yaml
 import numpy as np
@@ -233,7 +234,8 @@ def write_player_data():
     global world_xy
 
     player_data = {"pos": world_xy,
-                   "seed": world_seed}
+                   "seed": world_seed,
+                   "time": datetime.now().strftime("%y-%m-%d %H:%M:%S.%f")}
     with open(player_datafile, "w") as fh:
         yaml.dump(player_data, fh, default_flow_style=False)
 
@@ -714,7 +716,10 @@ def delete_block(pos,block_index,chunk_index):
     block_data[block_index[0]][block_index[1]] = 1
     surface = chunk_surfaces[chunk_index]
     pygame.draw.rect(surface, (0,0,0,0), [block_index[0]*block_size, block_index[1]*block_size, block_size, block_size])
-    surface.blit(blocks.block_images[1], [block_index[0]*block_size,block_index[1]*block_size])
+    surface.blit(block_images[1], [block_index[0]*block_size,block_index[1]*block_size])
+    
+    #TODO delete on image and save to file
+    #TODO save new data to blocks.txt
     
     print(F"Deleted: {pos} {chunk_index} {block_index}")
 
@@ -1148,6 +1153,7 @@ def init(SEED, display_scale=1, FULLSCREEN=False):
     global last_game_time
     global world_seed
     global WORLD_DIR
+    global block_images
     
     DEBUG = True
     world_seed = SEED

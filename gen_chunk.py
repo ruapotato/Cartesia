@@ -7,6 +7,7 @@ import numpy as np
 import os
 import yaml
 import time
+from datetime import datetime
 
 
 import blocks
@@ -179,7 +180,7 @@ def render_chunk(address_txt, surface):
 player_datafile = os.path.expanduser("~/.cartesia/player")
 def get_player_data():
     if not os.path.isfile(player_datafile):
-        print("No player data")
+        #print("No player data")
         return None
     with open(player_datafile) as fh:
         player_data = yaml.safe_load(fh)
@@ -193,7 +194,13 @@ while True:
         print("No player data, yet")
         time.sleep(fps_max)
         continue
-    print(player_info)
+    #print(player_info)
+    age = datetime.now() - datetime.strptime(player_info['time'], "%y-%m-%d %H:%M:%S.%f")
+    #print(age.seconds)
+    if age.seconds > 2 and age.seconds < 3:
+        #Main program exited
+        print("Main program missing!")
+        exit()
     if player_info["seed"] != SEED:
         set_seed(player_info["seed"])
         SEED = player_info["seed"]
@@ -215,7 +222,7 @@ while True:
     #needed_chunks = ['0_-2', '0_-1', '0_0', '0_1', '1_-2', '1_-1', '1_0', '1_1']
     #needed_chunks = ['0_-1', '0_0', '1_-1', '1_0', '1_1']
     #needed_chunks = ['0_0', '1_0']
-    print(f"Needed chunks: {needed_chunks}")
+    #print(f"Needed chunks: {needed_chunks}")
     #TODO update needed_chunks based on player x y
     for needed_chunk in needed_chunks:
         if needed_chunk not in rendered_chunks:

@@ -9,6 +9,7 @@ import os
 
 SEED = 1564654
 script_path = os.path.dirname(os.path.realpath(__file__))
+#os.system("killall -4 gen_chunk.py")
 os.system(f"{script_path}/gen_chunk.py &")
 #import matplotlib.pyplot as plt
 gui.init(SEED, display_scale=1.5, FULLSCREEN=False)
