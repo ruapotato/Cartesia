@@ -5,15 +5,25 @@ import time
 import pygame
 import copy
 import os
-import gen_chunk
+#import gen_chunk
+import yaml
+import numpy as np
+#import blocks # TODO Broken
 #from pygame.locals import *
 #from entities.player import *
 #from items.pickaxe import *
-
+if "SDL_VIDEODRIVER" in os.environ:
+    if  os.environ["SDL_VIDEODRIVER"] == "dummy":
+        del os.environ["SDL_VIDEODRIVER"]
 
 
 
 script_path = os.path.dirname(os.path.realpath(__file__))
+save_data = os.path.expanduser("~/.cartesia")
+if not os.path.isdir(save_data):
+    os.mkdir(save_data)
+player_datafile = os.path.expanduser(f"{save_data}/player")
+
 chunk_block_data = {}
 chunk_surfaces = {}
 rendered_chunks = []
@@ -28,42 +38,25 @@ music = {"happy": f"{script_path}/music/Komiku - Hélice's Theme.mp3"}
 
 
 
-def render_chunk(address_txt, surface):
-    global small_text_font
-    global light_sources
-    address = address_txt.split("_")
-    address = [int(address[0]), int(address[1])]
-    data = gen_chunk.get_chunk(address[0],address[1])
-    for y in range(0, chunk_blocks):
-        for x in range(0, chunk_blocks):
-            draw_x = x * block_size
-            draw_y = y * block_size
-            block_index = data[x][y]
-            if block_index in block_images:
-                #if block_index == 1:
-                #    continue
-                img = block_images[block_index]
-                
-                #5 = torch 
-                # 2 = grass above -3 TODO change to top level air block
-                #if block_index == 5 or (block_index == 2 and address[1] > -3):
-                if block_index == 5:
-                    where = [address,[draw_x, draw_y]]
-                    if address_txt in light_sources:
-                        light_sources[address_txt].append(where)
-                    else:
-                        light_sources[address_txt] = [where]
-                #new_pos = [pos[0] - int(img.get_width()/2), pos[1] - int(img.get_height()/2)]
-                surface.blit(img, [draw_x, draw_y])
-                """
-                if DEBUG:
-                    text_info = f"{x}:{y}"
-                    text_info_serface = small_text_font.render(text_info, False, (0, 0, 0))
-                    surface.blit(text_info_serface, [draw_x, draw_y])
-                """
-    if DEBUG:
-        text_info_serface = text_font.render(address_txt, False, (0, 0, 0))
-        surface.blit(text_info_serface, [20, 20])
+
+def chunk_rendered(needed_chunk):
+    chunk_dir = f"{WORLD_DIR}/{needed_chunk}/"
+    image_file = f"{chunk_dir}blocks.tga"
+    if os.path.isfile(image_file):
+        print("Chunk rendered")
+        return(True)
+    return(False)
+
+def load_chunk_image(needed_chunk):
+    chunk_dir = f"{WORLD_DIR}/{needed_chunk}/"
+    image_file = f"{chunk_dir}blocks.tga"
+    return(pygame.image.load(image_file).convert_alpha())
+
+
+def get_block_data(needed_chunk):
+    chunk_dir = f"{WORLD_DIR}/{needed_chunk}/"
+    block_file = f"{chunk_dir}blocks.txt"
+    data = np.loadtxt(block_file)
     return(data)
 
 
@@ -235,6 +228,15 @@ def environmentSpeedChange(pos, hitbox_size, current_speed, is_climbing, can_jum
                     print(f"set to: {pos[1]}")
 
     return((pos, current_speed, is_climbing, can_jump, is_jumping, damage))
+
+def write_player_data():
+    global world_xy
+
+    player_data = {"pos": world_xy,
+                   "seed": world_seed}
+    with open(player_datafile, "w") as fh:
+        yaml.dump(player_data, fh, default_flow_style=False)
+
 
 #Used for moving along a line at a speed
 def get_point_along(point1, point2, speed):
@@ -707,13 +709,12 @@ def draw_world():
 def delete_block(pos,block_index,chunk_index):
     global chunk_block_data
     global chunk_surfaces
-    global block_images
     global block_size
     block_data = chunk_block_data[chunk_index]
     block_data[block_index[0]][block_index[1]] = 1
     surface = chunk_surfaces[chunk_index]
     pygame.draw.rect(surface, (0,0,0,0), [block_index[0]*block_size, block_index[1]*block_size, block_size, block_size])
-    surface.blit(block_images[1], [block_index[0]*block_size,block_index[1]*block_size])
+    surface.blit(blocks.block_images[1], [block_index[0]*block_size,block_index[1]*block_size])
     
     print(F"Deleted: {pos} {chunk_index} {block_index}")
 
@@ -909,6 +910,8 @@ def main_interface():
                 
                 if keys[pygame.K_ESCAPE]:
                     pygame.quit()
+                    #End gen_chunk.py
+                    os.system("killall -4 gen_chunk.py")
                     quit()
                 
                 if not pre_game:
@@ -952,6 +955,7 @@ def main_interface():
         needed_chunks = []
         x_center_chunk = int(world_xy[0]/chunk_size)
         y_center_chunk = int(world_xy[1]/chunk_size)
+        write_player_data()
         #print(f"Center: {x_center_chunk}{y_center_chunk}")
         for x_around_chunks in range(-1,5):
             for y_around_chunks in range(-3,3):
@@ -966,12 +970,19 @@ def main_interface():
         for needed_chunk in needed_chunks:
             if needed_chunk not in rendered_chunks:
                 #chunk_surfaces[needed_chunk] = pygame.Surface((chunk_size, chunk_size),flags=pygame.SRCALPHA)
-                chunk_surfaces[needed_chunk] = pygame.Surface((chunk_size, chunk_size),flags=pygame.SRCALPHA)
-                chunk_surfaces[needed_chunk].fill((0,0,0,0))
+                #chunk_surfaces[needed_chunk] = pygame.Surface((chunk_size, #chunk_size),flags=pygame.SRCALPHA)
+                #chunk_surfaces[needed_chunk].fill((0,0,0,0))
                 #chunk_surfaces[needed_chunk].set_colorkey((255,0,255))
-                data = render_chunk(needed_chunk, chunk_surfaces[needed_chunk])
-                chunk_block_data[needed_chunk] = data
-                rendered_chunks.append(needed_chunk)
+                
+                #TODO check if rendered yet
+                if chunk_rendered(needed_chunk):
+                    data = get_block_data(needed_chunk)
+                    chunk_block_data[needed_chunk] = data
+                    rendered_chunks.append(needed_chunk)
+                    chunk_surfaces[needed_chunk] = load_chunk_image(needed_chunk)
+                #data = render_chunk(needed_chunk, chunk_surfaces[needed_chunk])
+                #chunk_block_data[needed_chunk] = data
+                #rendered_chunks.append(needed_chunk)
         
         #Clean up old data
         for rendered_chunk in rendered_chunks:
@@ -1114,7 +1125,6 @@ def init(SEED, display_scale=1, FULLSCREEN=False):
     global gameDisplay
     global fps
     global clock
-    global block_images
     global main_player
     global DEBUG
     global small_text_font
@@ -1136,11 +1146,15 @@ def init(SEED, display_scale=1, FULLSCREEN=False):
     global sun
     global game_time
     global last_game_time
+    global world_seed
+    global WORLD_DIR
     
     DEBUG = True
-    gen_chunk.set_seed(SEED)
+    world_seed = SEED
+    #gen_chunk.set_seed(SEED)
     
     fps = 30
+    WORLD_DIR = f"{save_data}/world/{SEED}"
     #Test at hight FPS
     #if DEBUG:
     #    fps = 60
@@ -1149,6 +1163,7 @@ def init(SEED, display_scale=1, FULLSCREEN=False):
     last_game_time = copy.deepcopy(game_time)
     
     pygame.init()
+    pygame.display.init()
     display_info = pygame.display.Info()
 
     #display_width = int(1440/2)
@@ -1212,11 +1227,21 @@ def init(SEED, display_scale=1, FULLSCREEN=False):
     world_light.set_colorkey((0,0,0))
     world_light_hight = 1024
     
-    #setup block texterus
+    
+    # BUG this is a copy of blocks.py from setup block texterus down
+    ######################
+    #setup block texterus#
+    ######################
+    #Lighting stuff
+    dark_block = pygame.Surface((16, 16),flags=pygame.SRCALPHA)
+    dark_block.fill((0,0,0,254))
+
+
     block_images = {}
     texterus_path = f"{script_path}/img/pixelperfection"
-    
+
     #Sky
+    sky_color = (0,175,255,1)
     block_images[1] = pygame.Surface((16, 16), flags=pygame.SRCALPHA)
     block_images[1].fill(sky_color)
     #light_source.fill((0,0,0,0))
@@ -1228,22 +1253,21 @@ def init(SEED, display_scale=1, FULLSCREEN=False):
     block_images[2] = pygame.image.load(f"{texterus_path}/default/default_dirt.png").convert_alpha()
     block_images[2].blit(grass_top, [0, 0])
     block_images[2].blit(dark_block, [0,0], special_flags=pygame.BLEND_RGBA_SUB)
-    
+
     #Test grass
     #block_images[2] = pygame.Surface((16, 16),flags=pygame.SRCALPHA)
     #block_images[2].fill((96,123,123))
     #block_images[2].blit(dark_block, [0,0], special_flags=pygame.BLEND_RGBA_SUB)
-    
+
     #Stone
     block_images[4] = pygame.image.load(f"{texterus_path}/default/default_stone.png").convert_alpha()
     block_images[4].blit(dark_block, [0,0], special_flags=pygame.BLEND_RGBA_SUB)
-    
+
     #default_torch
     tmp_toruch = pygame.image.load(f"{texterus_path}/default/default_torch.png").convert_alpha()
     block_images[5] = pygame.Surface((16, 16),flags=pygame.SRCALPHA)
     block_images[5].fill(sky_color)
     block_images[5].blit(tmp_toruch, [0,0])
-    #dot = small_text_font.render(".", False, (0, 0, 0))
     
     
     dot = pygame.Surface((20, 20),flags=pygame.SRCALPHA)
