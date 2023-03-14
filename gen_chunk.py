@@ -214,7 +214,7 @@ while True:
 
 
     #print(f"Center: {x_center_chunk}{y_center_chunk}")
-    for x_around_chunks in range(-1,5):
+    for x_around_chunks in range(-2,5):
         for y_around_chunks in range(-3,3):
             this_x = x_center_chunk + x_around_chunks
             this_y = y_center_chunk + y_around_chunks
