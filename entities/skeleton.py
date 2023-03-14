@@ -13,6 +13,12 @@ def update_skeleton(skeleton_data):
     x_speed_change = 0
     y_speed_change = 0
     
+    #Delete data on death
+    if skeleton_data["life"] < 0:
+        print("Skeleton down")
+        del NPCs[NPCs.index(skeleton_data)]
+        return()
+    
     shoot_at = display_width//4
     if skeleton_data["active_item"] != None:
         shoot = True
@@ -118,6 +124,8 @@ def init_skeleton(pos):
     global world_xy
     skeleton_data = {}
     #skeleton pos from would pos
+    skeleton_data["life"] = 60
+    skeleton_data["hurt_sound"] = "skeleton_hurt"
     skeleton_data["pos"] = pos
     skeleton_data["speed"] = [0,0]
     skeleton_data["walk_speed"] = 5

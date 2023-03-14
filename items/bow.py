@@ -93,12 +93,18 @@ def update_arrow(bow_data):
         
         #get_point_along(bow_data["pos"], bow_data["to_pos"], bow_data["speed"])
         #print(abs(new_point[0] - main_player["offset"][0]))
-        if abs(new_point[0] - main_player["offset"][0]) < 10 and abs(new_point[1] - main_player["offset"][1]) < 10:
-            print("Killl")
-            main_player["life"] -= bow_data["damage"]
+        damage_caused = attack(new_point, bow_data["damage"])
+        if damage_caused != 0:
+            # End arrow
             return(False)
         else:
             bow_data["pos"] = new_point
+        #if abs(new_point[0] - main_player["offset"][0]) < 10 and abs(new_point[1] - main_player["offset"][1]) < 10:
+        #    print("Killl")
+        #    main_player["life"] -= bow_data["damage"]
+        #    return(False)
+        #else:
+        #    bow_data["pos"] = new_point
         #bow_data["active"] = True
     else:
         return(False)

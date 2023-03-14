@@ -371,10 +371,26 @@ def draw_lighting(surface, chunk_address, undraw=False):
             if DEBUG:
                 draw_img(dot, [x_offset, y_offset])
             """
-            
-            
+# Returns damage done  
+def attack(point, damage_on_hit, dist=10):
     
-
+    #see if we hit the main player
+    if abs(point[0] - main_player["offset"][0]) < dist and abs(point[1] - main_player["offset"][1]) < dist:
+        print("Killl player")
+        sound = sounds[main_player["hurt_sound"]]
+        main_player["life"] -= damage_on_hit
+        pygame.mixer.Sound.play(sound)
+        return(damage_on_hit)
+    #See if we hit any entities
+    for npc in NPCs:
+        npc["pos"]
+        if abs(point[0] - npc["pos"][0]) < dist and abs(point[1] - npc["pos"][1]) < dist:
+            print("Killl npc")
+            sound = sounds[npc["hurt_sound"]]
+            npc["life"] -= damage_on_hit
+            pygame.mixer.Sound.play(sound)
+            return(damage_on_hit)
+    return(0)
 
 def draw_img(img, pos, target="default", angle=None, flip=False):
     
@@ -1212,7 +1228,9 @@ def init(SEED, display_scale=1, FULLSCREEN=False):
     #Music:
     pygame.mixer.music.load(music["happy"])
     pygame.mixer.music.play(-1)
-    sounds = {"magic_spell": pygame.mixer.Sound(f"{script_path}/sounds/80-CC0-RPG-SFX/creature_die_01.ogg")}
+    sounds = {"magic_spell": pygame.mixer.Sound(f"{script_path}/sounds/80-CC0-RPG-SFX/creature_die_01.ogg"),
+              "skeleton_hurt": pygame.mixer.Sound(f"{script_path}/sounds/80-CC0-RPG-SFX/creature_misc_03.ogg"),
+              "player_hurt": pygame.mixer.Sound(f"{script_path}/sounds/80-CC0-RPG-SFX/creature_hurt_02.ogg")}
 
     
     #light_source = pygame.image.load(f"{script_path}/img/light.png").convert()
