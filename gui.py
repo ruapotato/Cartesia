@@ -9,6 +9,7 @@ from datetime import datetime
 #import gen_chunk
 import yaml
 import numpy as np
+import random
 #import blocks # TODO Broken
 #from pygame.locals import *
 #from entities.player import *
@@ -18,24 +19,6 @@ if "SDL_VIDEODRIVER" in os.environ:
         del os.environ["SDL_VIDEODRIVER"]
 
 
-
-script_path = os.path.dirname(os.path.realpath(__file__))
-save_data = os.path.expanduser("~/.cartesia")
-if not os.path.isdir(save_data):
-    os.mkdir(save_data)
-player_datafile = os.path.expanduser(f"{save_data}/player")
-
-chunk_block_data = {}
-chunk_surfaces = {}
-rendered_chunks = []
-block_size = 16
-chunk_blocks = 32
-chunk_size = block_size * chunk_blocks
-gravity = -1.5
-#day_len = 7 #Min
-day_len = .5
-
-music = {"happy": f"{script_path}/music/Komiku - Hélice's Theme.mp3"}
 
 
 
@@ -229,6 +212,40 @@ def environmentSpeedChange(pos, hitbox_size, current_speed, is_climbing, can_jum
                     print(f"set to: {pos[1]}")
 
     return((pos, current_speed, is_climbing, can_jump, is_jumping, damage))
+
+
+def spawn_entities():
+    global spawn_rates
+    #off_screen_chunks = []
+    x_center_chunk = int(world_xy[0]/chunk_size)
+    y_center_chunk = int(world_xy[1]/chunk_size)
+    write_player_data()
+    #print(f"Center: {x_center_chunk}{y_center_chunk}")
+    for x_around_chunks in [-2,5]:
+        for y_around_chunks in range(-3,3):
+            this_x = x_center_chunk + x_around_chunks
+            this_y = y_center_chunk + y_around_chunks
+            
+            chunk_index = f"{this_x}_{this_y}"
+            if chunk_index in chunk_block_data:
+                block_data = chunk_block_data[chunk_index]
+                for block_x in range(0, chunk_blocks):
+                    for block_y in range(0, chunk_blocks):
+                        block_type = block_data[block_x][block_y]
+                        if block_type in spawn_rates:
+                            rate_of_spawn, spawn_init = spawn_rates[block_type]
+                            #Get number from 0 to 100
+                            this_guys_chance = random.randint(0,10000)/100
+                            if this_guys_chance <= rate_of_spawn:
+                                new_x = (block_x * block_size) + (this_x * chunk_blocks * block_size)
+                                #new_y = (block_index[1] * block_size) + (chunk_index[1] * chunk_size)
+                                new_y = (block_y * block_size) + (this_y * chunk_blocks * block_size)
+                                new_y = new_y * -1
+                                NPCs.append(spawn_init([new_x, new_y]))
+                                print(f"Spawn at {new_x} {new_y} {rate_of_spawn}")
+            #off_screen_chunks.append(f"{this_x}_{this_y}")
+    #print(off_screen_chunks)
+
 
 def write_player_data():
     global world_xy
@@ -1035,7 +1052,7 @@ def main_interface():
         #update_game()
         
 
-        
+        #entities  
         for npc in NPCs:
             npc["update"](npc)
             tile_size = npc["display_size"][0]
@@ -1049,13 +1066,15 @@ def main_interface():
                 npc["surface"],
                 npc["image_base_path"])
         
+        spawn_entities()
+        
         #print(world_xy)
         #main_player["image_states"] = {"left":10, "right": 12}
         #main_player["image_state"] = "left"
         #main_player["image_frame_offset"] = 0
         
         
-        #entities
+
         update_player(main_player)
         tile_size = main_player["display_size"][0]
         action_offset = main_player["image_states"][main_player["image_state"]]
@@ -1104,6 +1123,8 @@ def main_interface():
         clock.tick(fps)
 
 
+script_path = os.path.dirname(os.path.realpath(__file__))
+
 #Load into this namespace all needed spells
 for entry in os.scandir('spells'):
     if entry.is_file():
@@ -1135,6 +1156,26 @@ for entry in os.scandir('entities'):
             python_script = fh.readlines()
         python_script = "\n".join(python_script)
         exec(python_script)
+
+
+#Globals not needing set by init
+spawn_rates = {2: [.05, init_skeleton]}
+save_data = os.path.expanduser("~/.cartesia")
+if not os.path.isdir(save_data):
+    os.mkdir(save_data)
+player_datafile = os.path.expanduser(f"{save_data}/player")
+
+chunk_block_data = {}
+chunk_surfaces = {}
+rendered_chunks = []
+block_size = 16
+chunk_blocks = 32
+chunk_size = block_size * chunk_blocks
+gravity = -1.5
+#day_len = 7 #Min
+day_len = .5
+
+music = {"happy": f"{script_path}/music/Komiku - Hélice's Theme.mp3"}
 
 
 
