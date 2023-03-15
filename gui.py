@@ -216,11 +216,15 @@ def environmentSpeedChange(pos, hitbox_size, current_speed, is_climbing, can_jum
 
 def spawn_entities():
     global spawn_rates
+    global game_time
     #off_screen_chunks = []
     x_center_chunk = int(world_xy[0]/chunk_size)
     y_center_chunk = int(world_xy[1]/chunk_size)
     write_player_data()
     #print(f"Center: {x_center_chunk}{y_center_chunk}")
+    # if not night return:
+    if not game_time < 30:
+        return()
     for x_around_chunks in [-2,4]:
         for y_around_chunks in range(-3,3):
             this_x = x_center_chunk + x_around_chunks
@@ -235,7 +239,7 @@ def spawn_entities():
                         if block_type in spawn_rates:
                             rate_of_spawn, spawn_init = spawn_rates[block_type]
                             #Get number from 0 to 100
-                            this_guys_chance = random.randint(0,10000)/100
+                            this_guys_chance = random.randint(0,1000000)/10000
                             if this_guys_chance <= rate_of_spawn:
                                 new_x = (block_x * block_size) + (this_x * chunk_blocks * block_size)
                                 new_x -= world_xy[0]
@@ -1045,6 +1049,11 @@ def main_interface():
         #Sky
         game_time = (255/day_frames) * game_tick
         game_time = abs(game_time - 255//2)
+        #if game_time < 30:
+        #    print("night")
+        #else:
+        #    print("day")
+        #print(game_time)
         #print(game_time)
         #sky_color = (100,100,200,255-game_time)
         
@@ -1164,7 +1173,7 @@ for entry in os.scandir('entities'):
 
 
 #Globals not needing set by init
-spawn_rates = {2: [.05, init_skeleton]}
+spawn_rates = {2: [.005, init_skeleton]}
 save_data = os.path.expanduser("~/.cartesia")
 if not os.path.isdir(save_data):
     os.mkdir(save_data)
@@ -1177,8 +1186,8 @@ block_size = 16
 chunk_blocks = 32
 chunk_size = block_size * chunk_blocks
 gravity = -1.5
-#day_len = 7 #Min
-day_len = .5
+day_len = 7 #Min
+#day_len = .5
 
 music = {"happy": f"{script_path}/music/Komiku - Hélice's Theme.mp3"}
 
