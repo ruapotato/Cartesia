@@ -1349,6 +1349,6 @@ def init(SEED, display_scale=1, FULLSCREEN=False):
     main_player = init_player(world_zero_offset)
     NPCs = []
     #Test
-    NPCs.append(init_skeleton([300,300]))
+    #NPCs.append(init_skeleton([300,300]))
     
     main_interface()
