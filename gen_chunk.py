@@ -191,7 +191,7 @@ fps_max = 1/30
 while True:
     player_info = get_player_data()
     if player_info == None:
-        print("No player data, yet")
+        #print("No player data, yet")
         time.sleep(fps_max)
         continue
     #print(player_info)

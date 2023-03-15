@@ -84,12 +84,11 @@ def update_skeleton(skeleton_data):
     if fall_damage == 10000:
         del NPCs[NPCs.index(skeleton_data)]
         return
-    #skeleton_data["pos"][1] += skeleton_data["pos"][1] - pos_change[1]
+    
+    #Fix inside blocks
     skeleton_data["pos"][0] -= pos_change[0] - skeleton_data["pos"][0]
     skeleton_data["pos"][1] += pos_change[1] - skeleton_data["pos"][1]                                                                  
 
-    #skeleton_data["pos"][1] -= pos_change[1]
-    #skeleton_data["pos"][0] -= pos_change[0]
     
     skeleton_data["speed"] = newSpeed
     skeleton_data["is_climbing"] = is_climbing

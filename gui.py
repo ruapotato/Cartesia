@@ -169,8 +169,8 @@ def environmentSpeedChange(pos, hitbox_size, current_speed, is_climbing, can_jum
             #hit_at = (right_foot_block[1][1] // block_size) * block_size
             if not is_climbing:
                 if not is_jumping:
-                    print(f"Was: {pos[1]}")
-                    print(f"SPEED: {current_speed}")
+                    #print(f"Was: {pos[1]}")
+                    #print(f"SPEED: {current_speed}")
                     # 720 * x = 4
                     # 360 * x = 8
                     # height magic crap
@@ -209,7 +209,7 @@ def environmentSpeedChange(pos, hitbox_size, current_speed, is_climbing, can_jum
                     #print(new_pos)
                     #pos[1] += 1
                     pos[1] = new_pos[1] 
-                    print(f"set to: {pos[1]}")
+                    #print(f"set to: {pos[1]}")
 
     return((pos, current_speed, is_climbing, can_jump, is_jumping, damage))
 
@@ -221,7 +221,7 @@ def spawn_entities():
     y_center_chunk = int(world_xy[1]/chunk_size)
     write_player_data()
     #print(f"Center: {x_center_chunk}{y_center_chunk}")
-    for x_around_chunks in [-2,5]:
+    for x_around_chunks in [-2,4]:
         for y_around_chunks in range(-3,3):
             this_x = x_center_chunk + x_around_chunks
             this_y = y_center_chunk + y_around_chunks
@@ -238,11 +238,16 @@ def spawn_entities():
                             this_guys_chance = random.randint(0,10000)/100
                             if this_guys_chance <= rate_of_spawn:
                                 new_x = (block_x * block_size) + (this_x * chunk_blocks * block_size)
+                                new_x -= world_xy[0]
                                 #new_y = (block_index[1] * block_size) + (chunk_index[1] * chunk_size)
-                                new_y = (block_y * block_size) + (this_y * chunk_blocks * block_size)
-                                new_y = new_y * -1
+                                new_y = (block_y * block_size) - (this_y * chunk_blocks * block_size)
+                                new_y += world_xy[1]
+                                #new_y = new_y * -1
                                 NPCs.append(spawn_init([new_x, new_y]))
-                                print(f"Spawn at {new_x} {new_y} {rate_of_spawn}")
+                                if x_around_chunks == 4:
+                                    print(f"Spawn at right {new_x} {new_y} {rate_of_spawn}")
+                                else:
+                                    print(f"Spawn at left {new_x} {new_y} {rate_of_spawn}")
             #off_screen_chunks.append(f"{this_x}_{this_y}")
     #print(off_screen_chunks)
 
