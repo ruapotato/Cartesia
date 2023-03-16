@@ -341,7 +341,7 @@ def draw_inventory(full=False):
                 selected = True
         x_pos = x_offset + (item_pos % main_player["inventory_size"][0]) * x_size
         y_pos = y_offset + (item_pos // main_player["inventory_size"][0]) * y_size
-        print(f"{image} {x_pos} {y_pos}")
+        #print(f"{image} {x_pos} {y_pos}")
         
         if not selected:
             draw_img(blank, [x_pos, y_pos])
