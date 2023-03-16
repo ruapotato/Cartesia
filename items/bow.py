@@ -1,5 +1,6 @@
 #AGPL by David Hamner 2023
-
+# Add inventory image 
+inventory_images["bow"] = f"{script_path}/img/player/Universal-LPC-spritesheet/weapons/left hand/either/single_arrow.png"
 
 def process_bow_shooting(shooter_data, target, end=False):
     if not end:

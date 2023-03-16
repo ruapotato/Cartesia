@@ -314,6 +314,42 @@ def draw_NPC(images_by_path, pos, action_offset, image_buffer, img_base_path):
     draw_img(image_buffer, pos)
 
 
+def draw_inventory(full=False):
+    x_size = 32
+    y_size = 32
+    
+    
+    x_offset = (display_width//2) - ((main_player["inventory_size"][0]/2) * x_size)
+    y_offset = 25
+    
+    if full:
+        max_index = main_player["inventory_size"][0] * main_player["inventory_size"][1]
+    else:
+        max_index = main_player["inventory_size"][0]
+    
+    for item_pos in range(0, max_index):
+        image = None
+        selected = False
+        index_name = str(item_pos + 1)
+        if  index_name in main_player["inventory"]:
+            name =  main_player["inventory"][ index_name][0]
+            if name in inventory_images:
+                image = inventory_images[name]
+        
+        
+            if main_player["inventory"][index_name][1] == main_player["selected_item"]:
+                selected = True
+        x_pos = x_offset + (item_pos % main_player["inventory_size"][0]) * x_size
+        y_pos = y_offset + (item_pos // main_player["inventory_size"][0]) * y_size
+        print(f"{image} {x_pos} {y_pos}")
+        
+        if not selected:
+            draw_img(blank, [x_pos, y_pos])
+        else:
+            draw_img(selected_item_bg, [x_pos, y_pos])
+        if image != None:
+            draw_img(image, [x_pos, y_pos])
+
 def draw_sun(surface, chunk_address, offset, undraw=False):
     global light_sources
     global game_time
@@ -1108,6 +1144,10 @@ def main_interface():
         value_bar(display_width - 7,5,main_player["magic"], color="blue")
         value_bar(display_width - 7,15,main_player["strength"])
         value_bar(7,15,main_player["life"], color="red", from_right=False)
+        
+        draw_inventory()
+
+                
         #World lighting
         #darkness.blit(world_light, get_world_light_level())
         #print(f"Light level: {get_world_light_level()}")
@@ -1138,7 +1178,7 @@ def main_interface():
 
 
 script_path = os.path.dirname(os.path.realpath(__file__))
-
+inventory_images = {}
 #Load into this namespace all needed spells
 for entry in os.scandir('spells'):
     if entry.is_file():
@@ -1225,6 +1265,8 @@ def init(SEED, display_scale=1, FULLSCREEN=False):
     global world_seed
     global WORLD_DIR
     global block_images
+    global blank
+    global selected_item_bg
     
     DEBUG = True
     world_seed = SEED
@@ -1259,8 +1301,13 @@ def init(SEED, display_scale=1, FULLSCREEN=False):
     sky_color = (0,175,255,1)
     #Lighting stuff
     dark_block = pygame.Surface((16, 16),flags=pygame.SRCALPHA)
-    
     dark_block.fill((0,0,0,254))
+    blank = pygame.Surface((32, 32),flags=pygame.SRCALPHA)
+    blank.fill((100,100,100,120))
+    
+    selected_item_bg = pygame.Surface((32, 32),flags=pygame.SRCALPHA)
+    selected_item_bg.fill((0,0,200,120))
+    
     #darkness = pygame.Surface((display_width, display_height))
     #darkness.fill((0,0,0))
     #darkness.set_colorkey((255,0,255))

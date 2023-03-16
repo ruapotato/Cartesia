@@ -27,7 +27,7 @@ def init_player(offset):
     player_data["max_strength"] = 100
     player_data["bow_draw_speed"] = 25
     player_data["bow_draw"] = 0
-    
+    player_data["inventory_size"] = [9,6]
     
     player_data["inventory"] = {'1': ["mine", process_mine_cast],
                                 '2': ["bow", process_bow_shooting]}

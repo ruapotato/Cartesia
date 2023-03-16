@@ -1,4 +1,6 @@
 #AGPL by David Hamner 2023
+# Add inventory image 
+inventory_images["mine"] = f"{script_path}/img/pixelperfection/default/default_tool_woodpick.png"
 
 def process_mine_cast(caster_data, target, end=False):
     spell_casted = caster_data["magic_part_casted"] >= caster_data["magic_cast_speed"]
