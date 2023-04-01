@@ -255,6 +255,10 @@ def spawn_entities():
             #off_screen_chunks.append(f"{this_x}_{this_y}")
     #print(off_screen_chunks)
 
+def load_player_data():
+    with open(player_datafile, "r") as fh:
+        player_data = yaml.safe_load(fh)
+    return(player_data)
 
 def write_player_data():
     global world_xy
@@ -445,7 +449,6 @@ def attack(point, damage_on_hit, dist=10):
         return(damage_on_hit)
     #See if we hit any entities
     for npc in NPCs:
-        npc["pos"]
         if abs(point[0] - npc["pos"][0]) < dist and abs(point[1] - npc["pos"][1]) < dist:
             print("Killl npc")
             sound = sounds[npc["hurt_sound"]]
@@ -1269,7 +1272,7 @@ def init(SEED, display_scale=1, FULLSCREEN=False):
     global selected_item_bg
     
     DEBUG = True
-    world_seed = SEED
+    
     #gen_chunk.set_seed(SEED)
     
     fps = 30
@@ -1284,12 +1287,23 @@ def init(SEED, display_scale=1, FULLSCREEN=False):
     pygame.init()
     pygame.display.init()
     display_info = pygame.display.Info()
-
+    
+    
+    if os.path.isfile(player_datafile):
+        load_data = load_player_data()
+        print(f"Loading data file {load_data}")
+        world_seed = load_data['seed']
+        player_start_pos = load_data['pos']
+        world_xy = copy.deepcopy(player_start_pos)
+    else:
+        world_seed = SEED
+        player_start_pos = [0,0]
+        world_xy = copy.deepcopy(player_start_pos)
     #display_width = int(1440/2)
     #display_height = int(720/2)
     loaded_images = {}
-    player_start_pos = [0,0]
-    world_xy = copy.deepcopy(player_start_pos)
+    
+    
     last_sunspot = copy.deepcopy(world_xy)
     display_width = int(display_info.current_w/display_scale)
     display_height = int(display_info.current_h/display_scale)
