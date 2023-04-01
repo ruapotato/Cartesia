@@ -17,6 +17,8 @@ def update_skeleton(skeleton_data):
     if skeleton_data["life"] < 0:
         print("Skeleton down")
         del NPCs[NPCs.index(skeleton_data)]
+        print(f"Removing: {skeleton_data['save_data_file']}")
+        os.remove(skeleton_data["save_data_file"])
         return()
     
     shoot_at = display_width//4
@@ -118,6 +120,20 @@ def update_skeleton(skeleton_data):
     if skeleton_data["skeleton_is_walking"]:
         skeleton_data["image_frame_offset"] += 1
         skeleton_data["image_frame_offset"] %= 9
+    
+    #Update save data
+    data = {"pos": skeleton_data["pos"],
+            "life": skeleton_data["life"]}
+    with open(skeleton_data["save_data_file"], "w") as fh:
+         yaml.dump(data, fh, default_flow_style=False)
+    #Update folder if needed
+    chunk_atm = get_block_at(skeleton_data["pos"])[-1]
+    new_save_data_file = f"{WORLD_DIR}/{chunk_atm}/{skeleton_data['name']}.yml"
+    if new_save_data_file != skeleton_data["save_data_file"]:
+        #Move old to new
+        print(f"Moving {skeleton_data['save_data_file']} {new_save_data_file}")
+        os.rename(skeleton_data["save_data_file"], new_save_data_file)
+        skeleton_data["save_data_file"] = new_save_data_file
 
 def init_skeleton(pos):
     global world_xy
@@ -163,5 +179,8 @@ def init_skeleton(pos):
     skeleton_data["surface"].set_colorkey((255,0,255))
     skeleton_data["update"] = update_skeleton
     skeleton_data["last_world_pos"] = copy.deepcopy(world_xy)
+    skeleton_data["name"] = f"init_skeleton_{time.time()}"
+    chunk_atm = get_block_at(skeleton_data["pos"])[-1]
+    skeleton_data["save_data_file"] = f"{WORLD_DIR}/{chunk_atm}/{skeleton_data['name']}.yml"
     
     return(skeleton_data)

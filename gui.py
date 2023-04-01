@@ -10,6 +10,7 @@ from datetime import datetime
 import yaml
 import numpy as np
 import random
+import glob
 #import blocks # TODO Broken
 #from pygame.locals import *
 #from entities.player import *
@@ -254,6 +255,27 @@ def spawn_entities():
                                     print(f"Spawn at left {new_x} {new_y} {rate_of_spawn}")
             #off_screen_chunks.append(f"{this_x}_{this_y}")
     #print(off_screen_chunks)
+
+
+def load_saved_entities(needed_chunk):
+    global NPCs
+    folder = f"{WORLD_DIR}/{needed_chunk}/"
+    entities = glob.glob(f"{folder}init*.yml")
+    for entity_file_path in entities:
+        with open(entity_file_path, "r") as fh:
+            entity_data = yaml.safe_load(fh)
+        pos = entity_data["pos"]
+        start_function = entity_file_path.split("/")[-1]
+        start_function = start_function.split("_")
+        start_function = f"{start_function[0]}_{start_function[1]}"
+        possible_load_functions = globals().copy()
+        possible_load_functions.update(locals())
+        init = possible_load_functions.get(start_function)
+        if init:
+            os.remove(entity_file_path)
+            print(f"Found and loaded: {entity_file_path} {pos}")
+            NPCs.append(init(pos))
+            
 
 def load_player_data():
     with open(player_datafile, "r") as fh:
@@ -1059,7 +1081,7 @@ def main_interface():
                 #chunk_surfaces[needed_chunk] = pygame.Surface((chunk_size, #chunk_size),flags=pygame.SRCALPHA)
                 #chunk_surfaces[needed_chunk].fill((0,0,0,0))
                 #chunk_surfaces[needed_chunk].set_colorkey((255,0,255))
-                
+                load_saved_entities(needed_chunk)
                 #TODO check if rendered yet
                 if chunk_rendered(needed_chunk):
                     data = get_block_data(needed_chunk)

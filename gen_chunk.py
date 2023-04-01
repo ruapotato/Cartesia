@@ -87,7 +87,7 @@ def make_and_dress(x_zero,y_zero,size=32):
     for col in flipped:
         block_col = []
         ground_depth = 4
-        print(f"INFO: {col}")
+        #print(f"INFO: {col}")
         for a_solid in col:
             
             if not a_solid:
@@ -134,7 +134,7 @@ def get_chunk(x_index,y_index):
 def render_chunk(address_txt, surface):
     global small_text_font
     global light_sources
-    print("Rendering {address_txt}")
+    #print(f"Rendering {address_txt}")
     address = address_txt.split("_")
     address = [int(address[0]), int(address[1])]
     data = get_chunk(address[0],address[1])
@@ -170,7 +170,6 @@ def render_chunk(address_txt, surface):
         surface.blit(text_info_serface, [20, 20])
     
     image_file = f"{WORLD_DIR}/{address_txt}/blocks.tga"
-    print("hi")
 
 
     pygame.image.save(surface, image_file)
