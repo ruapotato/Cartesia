@@ -91,14 +91,14 @@ def update_tree(tree_data):
     # Update active_item
     #mouse_presses = pygame.mouse.get_pressed()
     
-
+    #Update folder if needed
+    block_type,block_pos,block_index,chunk_atm = get_block_at(tree_data["pos"])
     #Update save data
-    data = {"pos": tree_data["pos"],
+    data = {"pos": block_index,
             "life": tree_data["life"]}
     with open(tree_data["save_data_file"], "w") as fh:
          yaml.dump(data, fh, default_flow_style=False)
-    #Update folder if needed
-    chunk_atm = get_block_at(tree_data["pos"])[-1]
+
     new_save_data_file = f"{WORLD_DIR}/{chunk_atm}/{tree_data['name']}.yml"
     if new_save_data_file != tree_data["save_data_file"]:
         #Move old to new

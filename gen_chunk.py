@@ -116,7 +116,8 @@ def make_and_dress(x_zero,y_zero,size=32):
                 if crazyness < 1:
                     tree_plant_chance = random.randint(0,1000000)/10000
                     if tree_plant_chance <= tree_plant_rate:
-                        entities.append({"init_tree": [x,y]})
+                        
+                        entities.append({"init_tree": [x-x_zero,y-y_zero]})
                         block_col[-1] = 4
             elif ground_depth >= .5 and ground_depth < 3:
                 block_col.append(3) # dirt
@@ -145,21 +146,7 @@ def get_chunk(x_index,y_index):
             init_function = list(entity.keys())[0]
             print(f"Info: {entity[init_function]}")
             x, y = entity[init_function]
-            x_index, y_index
-            x_pos = x_index * chunk_size
-            x_pos += x * block_size
-            
-            y_pos = y_index * chunk_size
-            y_pos += y * block_size
-            y_pos *= -1
-            
-            
-            new_x = (x * block_size) + (x_index * chunk_blocks * block_size)
-            #new_y = (block_index[1] * block_size) + (chunk_index[1] * chunk_size)
-            new_y = (y * block_size) - (y_index * chunk_blocks * block_size)
-            
-            
-            data = {"pos": [new_x, new_y],
+            data = {"pos": [x, y],
                     "life": 60}
          
             save_data = f"{chunk_dir}{init_function}_{time.time()}.yml"

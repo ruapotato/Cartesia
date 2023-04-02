@@ -121,13 +121,15 @@ def update_skeleton(skeleton_data):
         skeleton_data["image_frame_offset"] += 1
         skeleton_data["image_frame_offset"] %= 9
     
+    
+    #Update folder if needed
+    block_type,block_pos,block_index,chunk_atm = get_block_at(skeleton_data["pos"])
     #Update save data
-    data = {"pos": skeleton_data["pos"],
+    data = {"pos": block_index,
             "life": skeleton_data["life"]}
     with open(skeleton_data["save_data_file"], "w") as fh:
          yaml.dump(data, fh, default_flow_style=False)
-    #Update folder if needed
-    chunk_atm = get_block_at(skeleton_data["pos"])[-1]
+         
     new_save_data_file = f"{WORLD_DIR}/{chunk_atm}/{skeleton_data['name']}.yml"
     if new_save_data_file != skeleton_data["save_data_file"]:
         #Move old to new

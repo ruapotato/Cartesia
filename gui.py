@@ -257,6 +257,14 @@ def spawn_entities():
     #print(off_screen_chunks)
 
 
+def get_screen_val(chunk_index, block_index):
+    global world_xy
+    new_x = (block_index[0] * block_size) + (chunk_index[0] * chunk_blocks * block_size)
+    new_x -= world_xy[0]
+    new_y = (block_index[1] * block_size) - (chunk_index[1] * chunk_blocks * block_size)
+    new_y += world_xy[1]
+    return([new_x, new_y])
+
 def load_saved_entities(needed_chunk):
     global NPCs
     folder = f"{WORLD_DIR}/{needed_chunk}/"
@@ -264,7 +272,10 @@ def load_saved_entities(needed_chunk):
     for entity_file_path in entities:
         with open(entity_file_path, "r") as fh:
             entity_data = yaml.safe_load(fh)
-        pos = entity_data["pos"]
+        chunk_list = needed_chunk.split("_")
+        chunk_list = [int(chunk_list[0]),int(chunk_list[1])]
+        pos = get_screen_val(chunk_list, entity_data["pos"])
+        print(f"Deubt: {pos} {entity_data}")
         start_function = entity_file_path.split("/")[-1]
         start_function = start_function.split("_")
         start_function = f"{start_function[0]}_{start_function[1]}"
