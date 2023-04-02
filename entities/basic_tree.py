@@ -77,7 +77,6 @@ def update_tree(tree_data):
     tree_data["is_climbing"] = is_climbing
     tree_data["can_jump"] = can_jump
     tree_data["is_jumping"] = is_jumping
-                    
     
     #add speed to tree (In this case edit the world_xy)
     if tree_data["speed"] != [0,0]:

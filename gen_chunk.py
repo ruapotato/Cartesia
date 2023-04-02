@@ -110,16 +110,16 @@ def make_and_dress(x_zero,y_zero,size=32):
             #print(f"Your info: {crazyness}")
             if not ground_depth:
                block_col.append(1) # Air
-            elif ground_depth > 0 and ground_depth < .5 :
+            elif ground_depth > 0 and ground_depth < .7 :
                 block_col.append(2) # Grass
                 #Trees in flat places
                 if crazyness < 1:
                     tree_plant_chance = random.randint(0,1000000)/10000
                     if tree_plant_chance <= tree_plant_rate:
                         
-                        entities.append({"init_tree": [x-x_zero,y-y_zero]})
+                        entities.append({"init_tree": [x-x_zero,0]})
                         block_col[-1] = 4
-            elif ground_depth >= .5 and ground_depth < 3:
+            elif ground_depth >= .7 and ground_depth < 3:
                 block_col.append(3) # dirt
             else:
                 block_col.append(4) # stone
