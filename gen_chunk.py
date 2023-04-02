@@ -8,7 +8,7 @@ import os
 import yaml
 import time
 from datetime import datetime
-
+import random
 
 import blocks
 pygame = blocks.pygame
@@ -40,6 +40,12 @@ def set_seed(New_seed):
     ground_level_crazyness = PerlinNoise(octaves=8, seed=SEED)
     WORLD_DIR = f"{save_data}/world/{SEED}"
 
+
+def get_crazyness_at_pos(x,y):
+    ground_crazyness = ground_level_noise([x/1000, y/1000])
+    ground_crazyness = ground_crazyness + ground_crazyness
+    return(ground_crazyness)
+
 #Gen_block at a gen pos with a given seed
 def solid_at_pos(x,y):
     global ground_level_noise
@@ -50,15 +56,16 @@ def solid_at_pos(x,y):
     #noise2 = PerlinNoise(octaves=6, seed=SEED)
     #noise3 = PerlinNoise(octaves=12, seed=SEED)
     #noise4 = PerlinNoise(octaves=24, seed=SEED)
-    ground_crazyness = ground_level_noise([x/1000, y/1000])
-    ground_crazyness = ground_crazyness + ground_crazyness
+
+    
+    ground_crazyness = get_crazyness_at_pos(x,y)
     hills = ground_crazyness * 100
     #print(ground_crazyness)
     ground_alt = (ground_level_noise([x/100, y/100]) * 100) - 10
     ground_alt = ground_alt * ground_crazyness
     #print(ground_alt)
     if y < ground_level + ground_alt + hills:
-        return(True)
+        return((ground_level + ground_alt + hills) - y)
     else:
         return(False)
     
@@ -67,15 +74,20 @@ def solid_at_pos(x,y):
 
 def make_and_dress(x_zero,y_zero,size=32):
     blocks = []
+    entities = []
     is_solid = []
+    
+    tree_plant_rate = 5
     for y in range(y_zero,y_zero+size):
         row = []
         for x in range(x_zero,x_zero+size):
-            is_land = solid_at_pos(x,y)
-            if is_land:
-                row.append(1)
+            is_land = {"pos": [x,y],
+                       "depth": solid_at_pos(x,y)}
+            if is_land["depth"]:
+                row.append(is_land)
             else:
-                row.append(0)
+                row.append({"pos": [x,y],
+                            "depth": 0})
         is_solid.append(row)
     
     
@@ -88,26 +100,34 @@ def make_and_dress(x_zero,y_zero,size=32):
         block_col = []
         ground_depth = 4
         #print(f"INFO: {col}")
-        for a_solid in col:
+        for block_data in col:
+            #print(block_data)
+            x = block_data["pos"][0]
+            y = block_data["pos"][-1]
+            ground_depth = block_data["depth"]
+            crazyness = get_crazyness_at_pos(x,y)
             
-            if not a_solid:
+            #print(f"Your info: {crazyness}")
+            if not ground_depth:
                block_col.append(1) # Air
-               ground_depth = -1
-            elif ground_depth < 0:
+            elif ground_depth > 0 and ground_depth < .5 :
                 block_col.append(2) # Grass
-                ground_depth = ground_depth + 1
-            elif ground_depth >= 0 and ground_depth < 3:
+                #Trees in flat places
+                if crazyness < 1:
+                    tree_plant_chance = random.randint(0,1000000)/10000
+                    if tree_plant_chance <= tree_plant_rate:
+                        entities.append({"init_tree": [x,y]})
+                        block_col[-1] = 4
+            elif ground_depth >= .5 and ground_depth < 3:
                 block_col.append(3) # dirt
-                ground_depth = ground_depth + 1
             else:
                 block_col.append(4) # stone
-                ground_depth = ground_depth + 1
         blocks.append(block_col)
         
     #blocks = np.array(blocks)
     #blocks = np.flip(blocks)
     blocks = np.flip(blocks, 0)
-    return(blocks)
+    return([blocks, entities])
 
 
 def get_chunk(x_index,y_index):
@@ -119,7 +139,33 @@ def get_chunk(x_index,y_index):
         print(f"Need to gen stuff {x_index} {y_index}")
         os.makedirs(chunk_dir, exist_ok=True)
         block_file = f"{chunk_dir}blocks.txt"
-        new_data = make_and_dress(x_zero,y_zero)
+        new_data, entities = make_and_dress(x_zero,y_zero)
+        
+        for entity in entities:
+            init_function = list(entity.keys())[0]
+            print(f"Info: {entity[init_function]}")
+            x, y = entity[init_function]
+            x_index, y_index
+            x_pos = x_index * chunk_size
+            x_pos += x * block_size
+            
+            y_pos = y_index * chunk_size
+            y_pos += y * block_size
+            y_pos *= -1
+            
+            
+            new_x = (x * block_size) + (x_index * chunk_blocks * block_size)
+            #new_y = (block_index[1] * block_size) + (chunk_index[1] * chunk_size)
+            new_y = (y * block_size) - (y_index * chunk_blocks * block_size)
+            
+            
+            data = {"pos": [new_x, new_y],
+                    "life": 60}
+         
+            save_data = f"{chunk_dir}{init_function}_{time.time()}.yml"
+            with open(save_data, "w") as fh:
+                 yaml.dump(data, fh, default_flow_style=False)
+            print(f"Saved: {save_data}")
         np.savetxt(block_file, new_data)
         #with open(block_file, "w+") as fh:
          #   fh.write(str(list(new_data)))
