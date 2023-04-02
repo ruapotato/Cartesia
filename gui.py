@@ -1131,15 +1131,20 @@ def main_interface():
         for npc in NPCs:
             npc["update"](npc)
             tile_size = npc["display_size"][0]
-            action_offset = npc["image_states"][npc["image_state"]]
-            action_offset = [npc["image_frame_offset"] * tile_size * -1,
-                             action_offset * tile_size * -1]
-            #print(npc["pos"])
-            draw_NPC(npc["images"],
-                npc["pos"],
-                action_offset,
-                npc["surface"],
-                npc["image_base_path"])
+            #NPC drawing
+            if "image_states" in npc:
+                action_offset = npc["image_states"][npc["image_state"]]
+                action_offset = [npc["image_frame_offset"] * tile_size * -1,
+                                action_offset * tile_size * -1]
+                #print(npc["pos"])
+                draw_NPC(npc["images"],
+                    npc["pos"],
+                    action_offset,
+                    npc["surface"],
+                    npc["image_base_path"])
+            #Simple draw
+            else:
+                draw_img(npc["image"], npc["pos"])
         
         spawn_entities()
         
@@ -1368,6 +1373,7 @@ def init(SEED, display_scale=1, FULLSCREEN=False):
     pygame.mixer.music.play(-1)
     sounds = {"magic_spell": pygame.mixer.Sound(f"{script_path}/sounds/80-CC0-RPG-SFX/creature_die_01.ogg"),
               "skeleton_hurt": pygame.mixer.Sound(f"{script_path}/sounds/80-CC0-RPG-SFX/creature_misc_03.ogg"),
+              "tree_hurt": pygame.mixer.Sound(f"{script_path}/sounds/80-CC0-RPG-SFX/creature_misc_03.ogg"),
               "player_hurt": pygame.mixer.Sound(f"{script_path}/sounds/80-CC0-RPG-SFX/creature_hurt_02.ogg")}
 
     
@@ -1441,6 +1447,6 @@ def init(SEED, display_scale=1, FULLSCREEN=False):
     main_player = init_player(world_zero_offset)
     NPCs = []
     #Test
-    #NPCs.append(init_skeleton([300,300]))
+    #NPCs.append(init_tree([600,300]))
     
     main_interface()
