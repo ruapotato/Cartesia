@@ -113,12 +113,12 @@ def make_and_dress(x_zero,y_zero,size=32):
             elif ground_depth > 0 and ground_depth < .7 :
                 block_col.append(2) # Grass
                 #Trees in flat places
-                if crazyness < 1:
+                if crazyness < 10:
                     tree_plant_chance = random.randint(0,1000000)/10000
                     if tree_plant_chance <= tree_plant_rate:
                         
                         entities.append({"init_tree": [x-x_zero,0]})
-                        block_col[-1] = 4
+                        block_col[-1] = 3
             elif ground_depth >= .7 and ground_depth < 3:
                 block_col.append(3) # dirt
             else:
@@ -136,10 +136,10 @@ def get_chunk(x_index,y_index):
     x_zero = x_index * 32
     y_zero = y_index * 32
     chunk_dir = f"{WORLD_DIR}/{x_index}_{y_index}/"
-    if not os.path.isdir(chunk_dir):
+    block_file = f"{chunk_dir}blocks.txt"
+    if not os.path.isfile(block_file):
         print(f"Need to gen stuff {x_index} {y_index}")
         os.makedirs(chunk_dir, exist_ok=True)
-        block_file = f"{chunk_dir}blocks.txt"
         new_data, entities = make_and_dress(x_zero,y_zero)
         
         for entity in entities:
@@ -159,7 +159,6 @@ def get_chunk(x_index,y_index):
         return(new_data)
     else:
         print(f"{chunk_dir} already genned")
-        block_file = f"{chunk_dir}blocks.txt"
         old_data = np.loadtxt(block_file)
         return(old_data)
 

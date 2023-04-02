@@ -18,7 +18,8 @@ def update_tree(tree_data):
         print("Tree down")
         del NPCs[NPCs.index(tree_data)]
         print(f"Removing: {tree_data['save_data_file']}")
-        os.remove(tree_data["save_data_file"])
+        if os.path.isfile(tree_data["save_data_file"]):
+            os.remove(tree_data["save_data_file"])
         return()
     
 
@@ -97,14 +98,25 @@ def update_tree(tree_data):
             "life": tree_data["life"]}
     with open(tree_data["save_data_file"], "w") as fh:
          yaml.dump(data, fh, default_flow_style=False)
+    """
+    data = {"pos": block_index,
+            "life": tree_data["life"]}
+    with open(tree_data["save_data_file"], "w") as fh:
+         yaml.dump(data, fh, default_flow_style=False)
 
     new_save_data_file = f"{WORLD_DIR}/{chunk_atm}/{tree_data['name']}.yml"
     if new_save_data_file != tree_data["save_data_file"]:
         #Move old to new
         print(f"Moving {tree_data['save_data_file']} {new_save_data_file}")
-        os.rename(tree_data["save_data_file"], new_save_data_file)
+        try:
+            os.remove(tree_data["save_data_file"])
+        except Exception:
+            pass
+        with open(new_save_data_file, "w") as fh:
+            yaml.dump(data, fh, default_flow_style=False)
+        #os.rename(tree_data["save_data_file"], new_save_data_file)
         tree_data["save_data_file"] = new_save_data_file
-
+    """
 def init_tree(pos):
     global world_xy
     tree_data = {}

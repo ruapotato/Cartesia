@@ -41,7 +41,12 @@ def load_chunk_image(needed_chunk):
 def get_block_data(needed_chunk):
     chunk_dir = f"{WORLD_DIR}/{needed_chunk}/"
     block_file = f"{chunk_dir}blocks.txt"
-    data = np.loadtxt(block_file)
+    # In case block_file is being writen by gen_chunk.py
+    try:
+        data = np.loadtxt(block_file)
+    except Exception:
+        time.sleep(.01)
+        return(get_block_data(needed_chunk))
     return(data)
 
 
@@ -1098,7 +1103,12 @@ def main_interface():
                     data = get_block_data(needed_chunk)
                     chunk_block_data[needed_chunk] = data
                     rendered_chunks.append(needed_chunk)
-                    chunk_surfaces[needed_chunk] = load_chunk_image(needed_chunk)
+                    #In case gen_chunk is writing this
+                    try:
+                        chunk_surfaces[needed_chunk] = load_chunk_image(needed_chunk)
+                    except Exception:
+                        time.sleep(.01)
+                        chunk_surfaces[needed_chunk] = load_chunk_image(needed_chunk)
                 #data = render_chunk(needed_chunk, chunk_surfaces[needed_chunk])
                 #chunk_block_data[needed_chunk] = data
                 #rendered_chunks.append(needed_chunk)
