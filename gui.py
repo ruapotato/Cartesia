@@ -308,6 +308,36 @@ def write_player_data():
         yaml.dump(player_data, fh, default_flow_style=False)
 
 
+def button(msgs,x,y,w,h,ic,ac,action=None):
+    x = int(x)
+    y = int(y)
+    h = int(h)
+    w = int(w)
+    mouse = pygame.mouse.get_pos()
+    click = pygame.mouse.get_pressed()
+    #print(click)
+    if x+w > mouse[0] > x and y+h > mouse[1] > y:
+        pygame.draw.rect(gameDisplay, ac,(x,y,w,h))
+
+        if click[0] == 1 and action != None:
+            action()         
+    else:
+        pygame.draw.rect(gameDisplay, ic,(x,y,w,h))
+    
+    offset = 1
+    msgs = msgs.split("\n")
+    total_msgs = len(msgs)
+    dist_apart = int(h / total_msgs)
+    for msg in msgs:
+        smallText = pygame.font.SysFont("comicsansms",20)
+        textSurf, textRect = text_objects(msg, smallText)
+        if total_msgs == 1:
+            textRect.center = ( int(x+int(textRect.width/2) + 5), int(y+int(h/2)) )
+        else:
+            textRect.center = ( int(x+int(textRect.width/2) + 5), int(y+(dist_apart*offset) - 10) )
+            offset += 1
+        gameDisplay.blit(textSurf, textRect)
+
 #Used for moving along a line at a speed
 def get_point_along(point1, point2, speed):
     new_point = copy.deepcopy(point1)
@@ -937,6 +967,18 @@ def value_bar(x,y,value, from_right=True, size=10, px_multiplayer=1.6, hide_text
         gameDisplay.blit(textSurf, textRect)
 
 
+def start_game():
+    global game_running
+    global main_menu
+    global pause_menu
+    global running
+    global INIT_DONE
+    main_menu = False
+    game_running = True
+    if not INIT_DONE:
+        init()
+    print("Starting game...")
+
 def main_interface():
     #Globals needed by update_game
     global selected_crop
@@ -968,12 +1010,22 @@ def main_interface():
     global game_time
     global last_game_time
     
+    global game_running
+    global main_menu
+    global pause_menu
+    global running
+    game_running = False
+    main_menu = True
+    pause_menu = False
     running = True
+    
+    menu_text_color = pygame.color.Color("White")
+    
     
     background_color = pygame.color.Color(25,25,25)
     player_display_pos = [int(display_width/2), int(display_height/2)]
 
-    player_target = world_xy
+    #player_target = world_xy
     max_speed = 3
     player_speed = [0,0]
     
@@ -994,238 +1046,250 @@ def main_interface():
 
     #PWD = get_PWD()
     rendered_path = None
-
     while running:
-        #look for new events
-        for event in pygame.event.get():
-            #print(event)
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                quit()
-            """
-            #Handel mouse press
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                mouse_presses = pygame.mouse.get_pressed()
-                if mouse_presses[0]:
-                    event_pos = pygame.mouse.get_pos()
-                    block_type,pos,block_index,chunk_index = get_block_at(event_pos)
-                    delete_block(pos,block_index,chunk_index)
-                    print(f"Left: {pos}: Chunk {chunk_index}")
-                    print(f"{block_index[0]} x {block_index[1]}")
-                    print(f"type: {block_type}")
-            """
-            #Handel Key press
-            if not pre_game:
-                if event.type == pygame.KEYUP:
-                    key_name = event.key
-                    if key_name == pygame.K_LEFT or key_name == pygame.K_a:
-                        main_player["wanted_speed"][0] = 0
-                        main_player["player_is_walking"] = False
-                    if key_name == pygame.K_RIGHT or key_name == pygame.K_d:
-                        main_player["wanted_speed"][0] = 0
-                        main_player["player_is_walking"] = False
-                 
-            if event.type == pygame.KEYDOWN:
-                key = event.unicode
-                key_name = event.key
-                keys = pygame.key.get_pressed()
-                arrow_pressed = False
-                
-                
-                if keys[pygame.K_ESCAPE]:
+        if main_menu:
+            for event in pygame.event.get():
+                #print(event)
+                if event.type == pygame.QUIT:
                     pygame.quit()
-                    #End gen_chunk.py
-                    os.system("killall -4 gen_chunk.py")
                     quit()
                 
+                start_text = "Play"
+                start_text_pos = [display_height//4,display_width//4]
+                button(start_text,start_text_pos[0],start_text_pos[1],270,50,menu_text_color,pygame.color.Color("Red"),start_game)
+                pygame.display.update()
+                #clock.tick(fps)
+        if game_running:
+            #look for new events
+            for event in pygame.event.get():
+                #print(event)
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    quit()
+                """
+                #Handel mouse press
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    mouse_presses = pygame.mouse.get_pressed()
+                    if mouse_presses[0]:
+                        event_pos = pygame.mouse.get_pos()
+                        block_type,pos,block_index,chunk_index = get_block_at(event_pos)
+                        delete_block(pos,block_index,chunk_index)
+                        print(f"Left: {pos}: Chunk {chunk_index}")
+                        print(f"{block_index[0]} x {block_index[1]}")
+                        print(f"type: {block_type}")
+                """
+                #Handel Key press
                 if not pre_game:
-                    # Switch inventory
-                    if key in main_player["inventory"]:
-                        print(f"Switching active item to {key}")
-                        main_player["selected_item"] = main_player["inventory"][key][1]
-                    # Move left
-                    if not main_player["magic_part_casted"]:
+                    if event.type == pygame.KEYUP:
+                        key_name = event.key
                         if key_name == pygame.K_LEFT or key_name == pygame.K_a:
-                            main_player["wanted_speed"][0] = main_player["walk_speed"] * -1
-                            arrow_pressed = True
-                            main_player["image_state"] = "left"
-                            main_player["player_is_walking"] = True
-                    
-                        # Move right
+                            main_player["wanted_speed"][0] = 0
+                            main_player["player_is_walking"] = False
                         if key_name == pygame.K_RIGHT or key_name == pygame.K_d:
-                            main_player["wanted_speed"][0] = main_player["walk_speed"]
-                            arrow_pressed = True
-                            main_player["image_state"] = "right"
-                            main_player["player_is_walking"] = True
+                            main_player["wanted_speed"][0] = 0
+                            main_player["player_is_walking"] = False
                     
-                        # Jump
-                        if main_player["can_jump"]:
-                            if key_name == pygame.K_UP or key_name == pygame.K_w or key_name == pygame.K_SPACE:
-                                main_player["wanted_speed"][1] = main_player["jump_speed"] 
-                                main_player["is_jumping"] = True
+                if event.type == pygame.KEYDOWN:
+                    key = event.unicode
+                    key_name = event.key
+                    keys = pygame.key.get_pressed()
+                    arrow_pressed = False
+                    
+                    
+                    if keys[pygame.K_ESCAPE]:
+                        pygame.quit()
+                        #End gen_chunk.py
+                        os.system("killall -4 gen_chunk.py")
+                        quit()
+                    
+                    if not pre_game:
+                        # Switch inventory
+                        if key in main_player["inventory"]:
+                            print(f"Switching active item to {key}")
+                            main_player["selected_item"] = main_player["inventory"][key][1]
+                        # Move left
+                        if not main_player["magic_part_casted"]:
+                            if key_name == pygame.K_LEFT or key_name == pygame.K_a:
+                                main_player["wanted_speed"][0] = main_player["walk_speed"] * -1
                                 arrow_pressed = True
+                                main_player["image_state"] = "left"
+                                main_player["player_is_walking"] = True
+                        
+                            # Move right
+                            if key_name == pygame.K_RIGHT or key_name == pygame.K_d:
+                                main_player["wanted_speed"][0] = main_player["walk_speed"]
+                                arrow_pressed = True
+                                main_player["image_state"] = "right"
+                                main_player["player_is_walking"] = True
+                        
+                            # Jump
+                            if main_player["can_jump"]:
+                                if key_name == pygame.K_UP or key_name == pygame.K_w or key_name == pygame.K_SPACE:
+                                    main_player["wanted_speed"][1] = main_player["jump_speed"] 
+                                    main_player["is_jumping"] = True
+                                    arrow_pressed = True
 
-                
-                    # if left arrow key is pressed
-                    #if keys[pygame.K_DOWN] :
-                    #    main_player["speed"][1] = max_speed * -1
-                    #    arrow_pressed = True
-        
-        #Reset lighting
-        #darkness.fill((0,0,0))
-        #print(f"speed: {main_player['speed']}")
-        #Update worlds
-        #print(f"play xy: {world_xy}")
-        needed_chunks = []
-        x_center_chunk = int(world_xy[0]/chunk_size)
-        y_center_chunk = int(world_xy[1]/chunk_size)
-        write_player_data()
-        #print(f"Center: {x_center_chunk}{y_center_chunk}")
-        for x_around_chunks in range(-2,5):
-            for y_around_chunks in range(-3,3):
-                this_x = x_center_chunk + x_around_chunks
-                this_y = y_center_chunk + y_around_chunks
-                needed_chunks.append(f"{this_x}_{this_y}")
-        #needed_chunks = ['0_-2', '0_-1', '0_0', '0_1', '1_-2', '1_-1', '1_0', '1_1']
-        #needed_chunks = ['0_-1', '0_0', '1_-1', '1_0', '1_1']
-        #needed_chunks = ['0_0', '1_0']
-        #print(f"Needed chunks: {needed_chunks}")
-        #TODO update needed_chunks based on player x y
-        for needed_chunk in needed_chunks:
-            if needed_chunk not in rendered_chunks:
-                #chunk_surfaces[needed_chunk] = pygame.Surface((chunk_size, chunk_size),flags=pygame.SRCALPHA)
-                #chunk_surfaces[needed_chunk] = pygame.Surface((chunk_size, #chunk_size),flags=pygame.SRCALPHA)
-                #chunk_surfaces[needed_chunk].fill((0,0,0,0))
-                #chunk_surfaces[needed_chunk].set_colorkey((255,0,255))
-                load_saved_entities(needed_chunk)
-                #TODO check if rendered yet
-                if chunk_rendered(needed_chunk):
-                    data = get_block_data(needed_chunk)
-                    chunk_block_data[needed_chunk] = data
-                    rendered_chunks.append(needed_chunk)
-                    #In case gen_chunk is writing this
-                    try:
-                        chunk_surfaces[needed_chunk] = load_chunk_image(needed_chunk)
-                    except Exception:
-                        time.sleep(.01)
-                        chunk_surfaces[needed_chunk] = load_chunk_image(needed_chunk)
-                #data = render_chunk(needed_chunk, chunk_surfaces[needed_chunk])
-                #chunk_block_data[needed_chunk] = data
-                #rendered_chunks.append(needed_chunk)
-        
-        #Clean up old data
-        for rendered_chunk in rendered_chunks:
-            if rendered_chunk not in needed_chunks:
-                print(f"del {rendered_chunk}")
-                del rendered_chunks[rendered_chunks.index(rendered_chunk)]
-                del(chunk_block_data[rendered_chunk])
-                del(chunk_surfaces[rendered_chunk])
-                if rendered_chunk in light_sources:
-                     del(light_sources[rendered_chunk])
-                
-                #TODO
-                #chunk_surfaces[rendered_chunk]
-        
-
-        #Draw stuff
-        #Sky
-        game_time = (255/day_frames) * game_tick
-        game_time = abs(game_time - 255//2)
-        #if game_time < 30:
-        #    print("night")
-        #else:
-        #    print("day")
-        #print(game_time)
-        #print(game_time)
-        #sky_color = (100,100,200,255-game_time)
-        
-        gameDisplay.fill((0,0,0))
-        gameDisplay.set_alpha(0)
-        draw_world()
-        last_game_time = copy.deepcopy(game_time)
-        
-        #Update NPC
-        #update_game()
-        
-
-        #entities  
-        for npc in NPCs:
-            npc["update"](npc)
-            tile_size = npc["display_size"][0]
-            #NPC drawing
-            if "image_states" in npc:
-                action_offset = npc["image_states"][npc["image_state"]]
-                action_offset = [npc["image_frame_offset"] * tile_size * -1,
-                                action_offset * tile_size * -1]
-                #print(npc["pos"])
-                draw_NPC(npc["images"],
-                    npc["pos"],
-                    action_offset,
-                    npc["surface"],
-                    npc["image_base_path"])
-            #Simple draw
-            else:
-                draw_img(npc["image"], npc["pos"])
-        
-        spawn_entities()
-        
-        #print(world_xy)
-        #main_player["image_states"] = {"left":10, "right": 12}
-        #main_player["image_state"] = "left"
-        #main_player["image_frame_offset"] = 0
-        
-        
-
-        update_player(main_player)
-        tile_size = main_player["display_size"][0]
-        action_offset = main_player["image_states"][main_player["image_state"]]
-        action_offset = [main_player["image_frame_offset"] * tile_size * -1,
-                         action_offset * tile_size * -1]
-        
-        
-        draw_NPC(main_player["images"],
-                main_player["offset"],
-                action_offset,
-                main_player["surface"],
-                main_player["image_base_path"])
-        
-        
-
-        #Draw interface stuff
-        value_bar(display_width - 7,5,main_player["magic"], color="blue")
-        value_bar(display_width - 7,15,main_player["strength"])
-        value_bar(7,15,main_player["life"], color="red", from_right=False)
-        
-        draw_inventory()
-
-                
-        #World lighting
-        #darkness.blit(world_light, get_world_light_level())
-        #print(f"Light level: {get_world_light_level()}")
-        #Object Lighting
-        #draw_lighting()
-        #darkness_write_buffer.fill((0,0,0))
-        #darkness_write_buffer.blit(darkness, [0,0])
-        #gameDisplay.blit(darkness, [0,0], special_flags=pygame.BLEND_ADD)
-        
+                    
+                        # if left arrow key is pressed
+                        #if keys[pygame.K_DOWN] :
+                        #    main_player["speed"][1] = max_speed * -1
+                        #    arrow_pressed = True
             
-        
-        #draw_img(player_image, player_display_pos)
+            #Reset lighting
+            #darkness.fill((0,0,0))
+            #print(f"speed: {main_player['speed']}")
+            #Update worlds
+            #print(f"play xy: {world_xy}")
+            needed_chunks = []
+            x_center_chunk = int(world_xy[0]/chunk_size)
+            y_center_chunk = int(world_xy[1]/chunk_size)
+            write_player_data()
+            #print(f"Center: {x_center_chunk}{y_center_chunk}")
+            for x_around_chunks in range(-2,5):
+                for y_around_chunks in range(-3,3):
+                    this_x = x_center_chunk + x_around_chunks
+                    this_y = y_center_chunk + y_around_chunks
+                    needed_chunks.append(f"{this_x}_{this_y}")
+            #needed_chunks = ['0_-2', '0_-1', '0_0', '0_1', '1_-2', '1_-1', '1_0', '1_1']
+            #needed_chunks = ['0_-1', '0_0', '1_-1', '1_0', '1_1']
+            #needed_chunks = ['0_0', '1_0']
+            #print(f"Needed chunks: {needed_chunks}")
+            #TODO update needed_chunks based on player x y
+            for needed_chunk in needed_chunks:
+                if needed_chunk not in rendered_chunks:
+                    #chunk_surfaces[needed_chunk] = pygame.Surface((chunk_size, chunk_size),flags=pygame.SRCALPHA)
+                    #chunk_surfaces[needed_chunk] = pygame.Surface((chunk_size, #chunk_size),flags=pygame.SRCALPHA)
+                    #chunk_surfaces[needed_chunk].fill((0,0,0,0))
+                    #chunk_surfaces[needed_chunk].set_colorkey((255,0,255))
+                    load_saved_entities(needed_chunk)
+                    #TODO check if rendered yet
+                    if chunk_rendered(needed_chunk):
+                        data = get_block_data(needed_chunk)
+                        chunk_block_data[needed_chunk] = data
+                        rendered_chunks.append(needed_chunk)
+                        #In case gen_chunk is writing this
+                        try:
+                            chunk_surfaces[needed_chunk] = load_chunk_image(needed_chunk)
+                        except Exception:
+                            time.sleep(.01)
+                            chunk_surfaces[needed_chunk] = load_chunk_image(needed_chunk)
+                    #data = render_chunk(needed_chunk, chunk_surfaces[needed_chunk])
+                    #chunk_block_data[needed_chunk] = data
+                    #rendered_chunks.append(needed_chunk)
+            
+            #Clean up old data
+            for rendered_chunk in rendered_chunks:
+                if rendered_chunk not in needed_chunks:
+                    print(f"del {rendered_chunk}")
+                    del rendered_chunks[rendered_chunks.index(rendered_chunk)]
+                    del(chunk_block_data[rendered_chunk])
+                    del(chunk_surfaces[rendered_chunk])
+                    if rendered_chunk in light_sources:
+                        del(light_sources[rendered_chunk])
+                    
+                    #TODO
+                    #chunk_surfaces[rendered_chunk]
+            
 
-        
-        #print(f"time: {sky_darkness}")
-        #Draw NPC
-        #draw_npc()
-        if game_tick > day_frames:
-            game_tick = 2
-        else:
-            game_tick = game_tick + 1
-        
-        if fps > clock.get_fps() + 3:
-            print(f"Warning, low fps: {clock.get_fps()}")
-        #print("Tick")
-        pygame.display.update()
-        clock.tick(fps)
+            #Draw stuff
+            #Sky
+            game_time = (255/day_frames) * game_tick
+            game_time = abs(game_time - 255//2)
+            #if game_time < 30:
+            #    print("night")
+            #else:
+            #    print("day")
+            #print(game_time)
+            #print(game_time)
+            #sky_color = (100,100,200,255-game_time)
+            
+            gameDisplay.fill((0,0,0))
+            gameDisplay.set_alpha(0)
+            draw_world()
+            last_game_time = copy.deepcopy(game_time)
+            
+            #Update NPC
+            #update_game()
+            
+
+            #entities  
+            for npc in NPCs:
+                npc["update"](npc)
+                tile_size = npc["display_size"][0]
+                #NPC drawing
+                if "image_states" in npc:
+                    action_offset = npc["image_states"][npc["image_state"]]
+                    action_offset = [npc["image_frame_offset"] * tile_size * -1,
+                                    action_offset * tile_size * -1]
+                    #print(npc["pos"])
+                    draw_NPC(npc["images"],
+                        npc["pos"],
+                        action_offset,
+                        npc["surface"],
+                        npc["image_base_path"])
+                #Simple draw
+                else:
+                    draw_img(npc["image"], npc["pos"])
+            
+            spawn_entities()
+            
+            #print(world_xy)
+            #main_player["image_states"] = {"left":10, "right": 12}
+            #main_player["image_state"] = "left"
+            #main_player["image_frame_offset"] = 0
+            
+            
+
+            update_player(main_player)
+            tile_size = main_player["display_size"][0]
+            action_offset = main_player["image_states"][main_player["image_state"]]
+            action_offset = [main_player["image_frame_offset"] * tile_size * -1,
+                            action_offset * tile_size * -1]
+            
+            
+            draw_NPC(main_player["images"],
+                    main_player["offset"],
+                    action_offset,
+                    main_player["surface"],
+                    main_player["image_base_path"])
+            
+            
+
+            #Draw interface stuff
+            value_bar(display_width - 7,5,main_player["magic"], color="blue")
+            value_bar(display_width - 7,15,main_player["strength"])
+            value_bar(7,15,main_player["life"], color="red", from_right=False)
+            
+            draw_inventory()
+
+                    
+            #World lighting
+            #darkness.blit(world_light, get_world_light_level())
+            #print(f"Light level: {get_world_light_level()}")
+            #Object Lighting
+            #draw_lighting()
+            #darkness_write_buffer.fill((0,0,0))
+            #darkness_write_buffer.blit(darkness, [0,0])
+            #gameDisplay.blit(darkness, [0,0], special_flags=pygame.BLEND_ADD)
+            
+                
+            
+            #draw_img(player_image, player_display_pos)
+
+            
+            #print(f"time: {sky_darkness}")
+            #Draw NPC
+            #draw_npc()
+            if game_tick > day_frames:
+                game_tick = 2
+            else:
+                game_tick = game_tick + 1
+            
+            if fps > clock.get_fps() + 3:
+                print(f"Warning, low fps: {clock.get_fps()}")
+            #print("Tick")
+            pygame.display.update()
+            clock.tick(fps)
 
 
 script_path = os.path.dirname(os.path.realpath(__file__))
@@ -1281,10 +1345,32 @@ day_len = 7 #Min
 #day_len = .5
 
 music = {"happy": f"{script_path}/music/Komiku - Hélice's Theme.mp3"}
+pygame.init()
+pygame.display.init()
+display_info = pygame.display.Info()
+
+display_scale = 1
+display_width = int(display_info.current_w/display_scale)
+display_height = int(display_info.current_h/display_scale)
+SEED = 1564654
+#Test at hight FPS
+#if DEBUG:
+#    fps = 60
+fps = 30
+day_frames = fps * 60 * day_len
+game_time = (255/day_frames) * (day_frames//2)
+last_game_time = copy.deepcopy(game_time)
+FULLSCREEN = False
+if FULLSCREEN:
+    gameDisplay = pygame.display.set_mode((display_width,display_height), pygame.FULLSCREEN)
+else:
+    gameDisplay = pygame.display.set_mode((display_width,display_height))
+gameDisplay.set_colorkey((255,0,255))
+
+INIT_DONE = False
 
 
-
-def init(SEED, display_scale=1, FULLSCREEN=False):
+def init():
     global display_info
     global display_width
     global display_height
@@ -1323,18 +1409,11 @@ def init(SEED, display_scale=1, FULLSCREEN=False):
     
     #gen_chunk.set_seed(SEED)
     
-    fps = 30
+   
     WORLD_DIR = f"{save_data}/world/{SEED}"
-    #Test at hight FPS
-    #if DEBUG:
-    #    fps = 60
-    day_frames = fps * 60 * day_len
-    game_time = (255/day_frames) * (day_frames//2)
-    last_game_time = copy.deepcopy(game_time)
+
     
-    pygame.init()
-    pygame.display.init()
-    display_info = pygame.display.Info()
+
     
     
     if os.path.isfile(player_datafile):
@@ -1353,8 +1432,7 @@ def init(SEED, display_scale=1, FULLSCREEN=False):
     
     
     last_sunspot = copy.deepcopy(world_xy)
-    display_width = int(display_info.current_w/display_scale)
-    display_height = int(display_info.current_h/display_scale)
+
     clock = pygame.time.Clock()
     fount_size = int(display_width/80)
     fount_size = fount_size * 4
@@ -1381,11 +1459,7 @@ def init(SEED, display_scale=1, FULLSCREEN=False):
     #darkness_write_buffer.fill((0,0,0))
     #darkness_write_buffer.set_colorkey((255,0,255))
 
-    if FULLSCREEN:
-        gameDisplay = pygame.display.set_mode((display_width,display_height), pygame.FULLSCREEN)
-    else:
-        gameDisplay = pygame.display.set_mode((display_width,display_height))
-    gameDisplay.set_colorkey((255,0,255))
+
     
     
     
@@ -1470,4 +1544,4 @@ def init(SEED, display_scale=1, FULLSCREEN=False):
     #Test
     #NPCs.append(init_tree([600,300]))
     
-    main_interface()
+main_interface()
