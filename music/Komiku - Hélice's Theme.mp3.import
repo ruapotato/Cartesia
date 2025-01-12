@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://dg3a5tqpylumt"
+path="res://.godot/imported/Komiku - Hélice's Theme.mp3-a6fd1ec3284ce22741fd152d5b2ec6db.mp3str"
+
+[deps]
+
+source_file="res://music/Komiku - Hélice's Theme.mp3"
+dest_files=["res://.godot/imported/Komiku - Hélice's Theme.mp3-a6fd1ec3284ce22741fd152d5b2ec6db.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

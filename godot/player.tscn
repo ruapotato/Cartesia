@@ -1,0 +1,19 @@
+[gd_scene load_steps=4 format=3 uid="uid://dig12v6yk7ut6"]
+
+[ext_resource type="Script" path="res://godot/player.gd" id="1_0sewc"]
+[ext_resource type="Texture2D" uid="uid://cswkg313iel70" path="res://img/player/Universal-LPC-spritesheet/body/male/light.png" id="2_w2ydo"]
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_78k7b"]
+
+[node name="player" type="CharacterBody2D"]
+script = ExtResource("1_0sewc")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CapsuleShape2D_78k7b")
+
+[node name="Camera2D" type="Camera2D" parent="."]
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+texture = ExtResource("2_w2ydo")
+hframes = 13
+vframes = 21
