@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://xgmh736slus6"]
+
+[ext_resource type="Script" path="res://godot/equipment/wooden_sword.gd" id="1_oby8f"]
+
+[node name="wooden_sword" type="Node2D"]
+script = ExtResource("1_oby8f")
