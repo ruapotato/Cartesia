@@ -200,12 +200,12 @@ class CartesiaGame:
         self.time_module = time
 
         # Create large world for exploration (Starbound-style!)
-        # Wide for horizontal exploration, VERY tall for infinite digging!
+        # Wide for horizontal exploration, tall enough for deep digging
         world_width = self.width * 4
-        world_height = self.height * 10  # 10x screen height for deep digging!
+        world_height = self.height * 4  # 4x screen height for deep digging (balanced)
 
         print(f"Creating world: {world_width}x{world_height} pixels...")
-        self.sand = FallingSandEngine(world_width, world_height, cell_size=2)
+        self.sand = FallingSandEngine(world_width, world_height, cell_size=4)  # Bigger cells = 4x faster rendering!
 
         # Physics engine for player
         self.physics = SandPhysicsEngine(self.sand)
@@ -479,15 +479,38 @@ class CartesiaGame:
 
     def run(self):
         """Main game loop - FAST!"""
+        import time
+        frame_count = 0
+        frame_times = []
+
         while self.running:
+            frame_start = time.perf_counter()
+
             dt = self.clock.tick(120) / 1000.0
             dt = min(dt, 0.016)  # Cap at 60 FPS physics
 
             self.handle_events()
+
+            t1 = time.perf_counter()
             self.update(dt)
+            t2 = time.perf_counter()
+
             self.render()
+            t3 = time.perf_counter()
 
             pygame.display.flip()
+
+            frame_end = time.perf_counter()
+            frame_time = (frame_end - frame_start) * 1000
+            frame_times.append(frame_time)
+            frame_count += 1
+
+            # Print stats every 30 frames
+            if frame_count % 30 == 0:
+                avg_frame = sum(frame_times[-30:]) / min(30, len(frame_times))
+                update_time = (t2 - t1) * 1000
+                render_time = (t3 - t2) * 1000
+                print(f"Frame: {avg_frame:.1f}ms ({1000/avg_frame:.0f} FPS) | Update: {update_time:.1f}ms | Render: {render_time:.1f}ms", flush=True)
 
         pygame.quit()
 
