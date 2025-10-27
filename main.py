@@ -366,39 +366,37 @@ class CartesiaGame:
             print(f"WARNING: No chunks activated at chunk ({chunk_x}, {chunk_y})! Generated: {len(self.generated_chunks)}")
 
     def _update_physics_simulation_area(self, player_chunk_x: int, player_chunk_y: int):
-        """Activate physics on chunks near player, track movement for settling."""
-        radius = self.physics_simulation_radius
-
+        """Activate physics on ALL active chunks (including rain!)"""
         # Deactivate ALL chunks
         self.sand.active.fill(False)
 
         # Track which chunks we're checking this frame
         chunks_to_simulate = []
 
-        # Activate chunks near player that are in active_chunks
-        for chunk_y in range(player_chunk_y - radius, player_chunk_y + radius + 1):
-            for chunk_x in range(player_chunk_x - radius, player_chunk_x + radius + 1):
-                chunk_key = (chunk_x, chunk_y)
+        # Activate ALL chunks in active_chunks (not just near player!)
+        # This ensures rain falls even if it spawns far from player
+        for chunk_key in list(self.active_chunks.keys()):
+            chunk_x, chunk_y = chunk_key
 
-                # Only process active chunks
-                if chunk_key not in self.active_chunks:
-                    continue
+            # Skip if chunk wasn't generated
+            if chunk_key not in self.generated_chunks:
+                continue
 
-                # Calculate grid coordinates
-                start_grid_x = chunk_x * self.chunk_size
-                start_grid_y = chunk_y * self.chunk_size
-                end_grid_x = min(start_grid_x + self.chunk_size, self.sand.grid_width)
-                end_grid_y = min(start_grid_y + self.chunk_size, self.sand.grid_height)
+            # Calculate grid coordinates
+            start_grid_x = chunk_x * self.chunk_size
+            start_grid_y = chunk_y * self.chunk_size
+            end_grid_x = min(start_grid_x + self.chunk_size, self.sand.grid_width)
+            end_grid_y = min(start_grid_y + self.chunk_size, self.sand.grid_height)
 
-                # Skip if out of bounds
-                if start_grid_x >= self.sand.grid_width or start_grid_y >= self.sand.grid_height:
-                    continue
-                if end_grid_x <= 0 or end_grid_y <= 0:
-                    continue
+            # Skip if out of bounds
+            if start_grid_x >= self.sand.grid_width or start_grid_y >= self.sand.grid_height:
+                continue
+            if end_grid_x <= 0 or end_grid_y <= 0:
+                continue
 
-                # Activate entire chunk for physics simulation
-                self.sand.active[start_grid_x:end_grid_x, start_grid_y:end_grid_y] = True
-                chunks_to_simulate.append(chunk_key)
+            # Activate entire chunk for physics simulation
+            self.sand.active[start_grid_x:end_grid_x, start_grid_y:end_grid_y] = True
+            chunks_to_simulate.append(chunk_key)
 
         return chunks_to_simulate
 
