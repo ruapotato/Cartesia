@@ -219,6 +219,9 @@ class CartesiaGame:
         self.chunk_size = 32  # Larger chunks work better with vectorization!
         self.chunk_generation_radius = 12  # Generate further out
 
+        # Physics simulation only runs near player for MASSIVE performance boost!
+        self.physics_simulation_radius = 6  # Only simulate 6 chunks around player
+
         # Track chunks with all neighbors loaded (safe for physics)
         self.chunks_with_neighbors = set()
 
@@ -274,21 +277,43 @@ class CartesiaGame:
         return True
 
     def _activate_chunk_if_safe(self, chunk_x: int, chunk_y: int):
-        """Activate physics in a chunk if it has all neighbors loaded."""
+        """Mark chunk as safe for physics if it has all neighbors loaded (but don't activate yet)."""
         if not self._has_all_neighbors(chunk_x, chunk_y):
             return
 
-        # Mark as having neighbors
+        # Mark as having neighbors (safe for physics, but not necessarily active)
         self.chunks_with_neighbors.add((chunk_x, chunk_y))
 
-        # Calculate grid coordinates
-        start_grid_x = chunk_x * self.chunk_size
-        start_grid_y = chunk_y * self.chunk_size
-        end_grid_x = min(start_grid_x + self.chunk_size, self.sand.grid_width)
-        end_grid_y = min(start_grid_y + self.chunk_size, self.sand.grid_height)
+    def _update_physics_simulation_area(self, player_chunk_x: int, player_chunk_y: int):
+        """Only activate physics on chunks near the player - MASSIVE performance boost!"""
+        radius = self.physics_simulation_radius
 
-        # Activate entire chunk
-        self.sand.active[start_grid_x:end_grid_x, start_grid_y:end_grid_y] = True
+        # First pass: Deactivate ALL chunks
+        self.sand.active.fill(False)
+
+        # Second pass: Activate only chunks near player that have neighbors
+        for chunk_y in range(player_chunk_y - radius, player_chunk_y + radius + 1):
+            for chunk_x in range(player_chunk_x - radius, player_chunk_x + radius + 1):
+                chunk_key = (chunk_x, chunk_y)
+
+                # Only activate if chunk has all neighbors (safe) and is generated
+                if chunk_key not in self.chunks_with_neighbors:
+                    continue
+
+                # Calculate grid coordinates
+                start_grid_x = chunk_x * self.chunk_size
+                start_grid_y = chunk_y * self.chunk_size
+                end_grid_x = min(start_grid_x + self.chunk_size, self.sand.grid_width)
+                end_grid_y = min(start_grid_y + self.chunk_size, self.sand.grid_height)
+
+                # Skip if out of bounds
+                if start_grid_x >= self.sand.grid_width or start_grid_y >= self.sand.grid_height:
+                    continue
+                if end_grid_x <= 0 or end_grid_y <= 0:
+                    continue
+
+                # Activate entire chunk for physics simulation
+                self.sand.active[start_grid_x:end_grid_x, start_grid_y:end_grid_y] = True
 
     def _queue_chunks_around(self, center_x: int, center_y: int):
         """Queue chunks PRIORITIZING direction of movement - prevents falling into ungenerated areas!"""
@@ -527,6 +552,11 @@ class CartesiaGame:
                 self._generate_chunk(chunk_x, chunk_y)
                 self.generated_chunks.add((chunk_x, chunk_y))
 
+        # Update physics simulation area - only simulate near player!
+        player_chunk_x = int(self.player.center_x) // (self.chunk_size * self.sand.cell_size)
+        player_chunk_y = int(self.player.center_y) // (self.chunk_size * self.sand.cell_size)
+        self._update_physics_simulation_area(player_chunk_x, player_chunk_y)
+
         # Mining/placing with mouse
         mouse_x, mouse_y = pygame.mouse.get_pos()
 
@@ -602,14 +632,19 @@ class CartesiaGame:
             Material.LAVA: "Lava",
         }
 
+        # Count active cells for performance monitoring
+        active_chunks_simulated = (self.physics_simulation_radius * 2 + 1) ** 2
+        active_cells = np.count_nonzero(self.sand.active)
+
         info = [
             f"FPS: {int(self.clock.get_fps())}",
             f"Position: ({int(self.player.x)}, {int(self.player.y)})",
             f"Material: {material_names[self.current_material]} (1-5)",
             f"On Ground: {self.player.on_ground}",
             f"Chunks Generated: {len(self.generated_chunks)}",
-            f"Chunks Active: {len(self.chunks_with_neighbors)}",
-            f"Chunks Queued: {len(self.chunk_queue)}",
+            f"Chunks Safe: {len(self.chunks_with_neighbors)}",
+            f"Chunks Simulating: ~{active_chunks_simulated}",
+            f"Active Cells: {active_cells}",
             "",
             "WASD/Arrows: Move",
             "Space: Jump",
