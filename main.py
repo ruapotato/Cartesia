@@ -205,7 +205,7 @@ class CartesiaGame:
         world_height = self.height * 4  # 4x screen height for deep digging (balanced)
 
         print(f"Creating world: {world_width}x{world_height} pixels...")
-        self.sand = FallingSandEngine(world_width, world_height, cell_size=4)  # Bigger cells = 4x faster rendering!
+        self.sand = FallingSandEngine(world_width, world_height, cell_size=6)  # Bigger cells = faster rendering!
 
         # Physics engine for player
         self.physics = SandPhysicsEngine(self.sand)
@@ -232,7 +232,7 @@ class CartesiaGame:
 
         # Chunk activity system - only simulate chunks player interacted with recently
         self.recently_modified_chunks = {}  # chunk_key -> frame counter
-        self.chunk_activity_duration = 90  # Keep chunks active for 3 seconds after modification
+        self.chunk_activity_duration = 300  # Keep chunks active for 10 seconds after modification (enough time for dirt to fall)
 
         # Generate multiple chunks per frame (catch up fast!)
         self.chunk_queue = []
@@ -302,11 +302,17 @@ class CartesiaGame:
         chunk_y = grid_y // self.chunk_size
 
         # Mark this chunk and all 8 neighbors as recently modified
+        activated = 0
         for dy in [-1, 0, 1]:
             for dx in [-1, 0, 1]:
                 neighbor_chunk = (chunk_x + dx, chunk_y + dy)
-                if neighbor_chunk in self.chunks_with_neighbors:
+                # Activate ANY generated chunk (don't require neighbors)
+                if neighbor_chunk in self.generated_chunks:
                     self.recently_modified_chunks[neighbor_chunk] = 0
+                    activated += 1
+
+        if activated == 0:
+            print(f"WARNING: No chunks activated at chunk ({chunk_x}, {chunk_y})! Generated: {len(self.generated_chunks)}")
 
     def _update_physics_simulation_area(self, player_chunk_x: int, player_chunk_y: int):
         """Only activate physics on recently modified chunks near player!"""
@@ -635,12 +641,22 @@ class CartesiaGame:
             self.sand.dirty = True
             # Reactivate affected chunks
             self._reactivate_chunk_at_position(world_x, world_y)
+            if not hasattr(self, '_last_mine_frame'):
+                self._last_mine_frame = 0
+            if self.clock.get_fps() > 0 and pygame.time.get_ticks() - self._last_mine_frame > 500:
+                print(f"MINED at ({world_x},{world_y}), modified chunks: {len(self.recently_modified_chunks)}")
+                self._last_mine_frame = pygame.time.get_ticks()
         elif self.right_mouse_down:
             # Place
             self.sand.spawn_circle(world_x, world_y, self.brush_size, self.current_material)
             self.sand.dirty = True
             # Reactivate affected chunks
             self._reactivate_chunk_at_position(world_x, world_y)
+            if not hasattr(self, '_last_place_frame'):
+                self._last_place_frame = 0
+            if self.clock.get_fps() > 0 and pygame.time.get_ticks() - self._last_place_frame > 500:
+                print(f"PLACED {self.current_material} at ({world_x},{world_y}), modified chunks: {len(self.recently_modified_chunks)}")
+                self._last_place_frame = pygame.time.get_ticks()
 
         # Update falling sand simulation at 30 FPS (performance boost!)
         if not hasattr(self, '_sand_timer'):

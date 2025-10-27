@@ -273,6 +273,13 @@ class FallingSandEngine:
             # No active cells = no work to do!
             return
 
+        # Debug: print when we have active cells
+        if not hasattr(self, '_last_physics_print'):
+            self._last_physics_print = 0
+        if self.frame - self._last_physics_print > 30:  # Print every 30 physics frames
+            print(f"PHYSICS running: {active_count} active cells")
+            self._last_physics_print = self.frame
+
         # Find bounding box of active cells - MASSIVE optimization!
         active_indices = np.argwhere(self.active)
 
