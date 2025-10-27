@@ -709,28 +709,35 @@ class CartesiaGame:
             self.rain_spawn_timer += dt
             if self.rain_spawn_timer >= 0.2:  # Spawn every 0.2 seconds (5 drops/sec)
                 self.rain_spawn_timer = 0.0
-                # Spawn water near top of visible area
-                camera_top_y = int(self.camera_y - self.height // 2)
-                spawn_y = max(0, camera_top_y - 50)
-                # Random X position across screen width
-                camera_left_x = int(self.camera_x - self.width // 2)
-                camera_right_x = int(self.camera_x + self.width // 2)
-                for _ in range(1):  # Spawn 1 drop at a time
-                    spawn_x = self.random.randint(max(0, camera_left_x),
-                                                   min(self.sand.grid_width * self.sand.cell_size - 1, camera_right_x))
-                    grid_x = spawn_x // self.sand.cell_size
-                    grid_y = spawn_y // self.sand.cell_size
+
+                # Spawn rain within visible area where chunks are already generated
+                # Get player chunk position
+                player_chunk_x = int(self.player.center_x) // (self.chunk_size * self.sand.cell_size)
+                player_chunk_y = int(self.player.center_y) // (self.chunk_size * self.sand.cell_size)
+
+                # Spawn rain in a chunk near the top of the generation radius
+                spawn_chunk_y = player_chunk_y - self.chunk_generation_radius // 2  # Higher up but within generated area
+                spawn_chunk_x = player_chunk_x + self.random.randint(-self.chunk_generation_radius // 2,
+                                                                       self.chunk_generation_radius // 2)
+
+                chunk_key = (spawn_chunk_x, spawn_chunk_y)
+
+                # Only spawn if chunk is generated
+                if chunk_key in self.generated_chunks:
+                    # Random position within the chunk
+                    local_x = self.random.randint(0, self.chunk_size - 1)
+                    local_y = self.random.randint(0, min(5, self.chunk_size - 1))  # Top 5 rows of chunk
+
+                    grid_x = spawn_chunk_x * self.chunk_size + local_x
+                    grid_y = spawn_chunk_y * self.chunk_size + local_y
+
                     if 0 <= grid_x < self.sand.grid_width and 0 <= grid_y < self.sand.grid_height:
                         if self.sand.cells[grid_x, grid_y] == Material.AIR:
                             self.sand.cells[grid_x, grid_y] = Material.WATER
                             self.sand.active[grid_x, grid_y] = True
 
                             # Activate the chunk where rain spawns so it falls!
-                            chunk_x = grid_x // self.chunk_size
-                            chunk_y = grid_y // self.chunk_size
-                            chunk_key = (chunk_x, chunk_y)
-                            if chunk_key in self.generated_chunks:
-                                self.active_chunks[chunk_key] = 0
+                            self.active_chunks[chunk_key] = 0
 
         # Update falling sand simulation at 30 FPS (performance boost!)
         if not hasattr(self, '_sand_timer'):
