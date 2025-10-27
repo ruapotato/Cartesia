@@ -125,42 +125,42 @@ def generate_chunk(chunk_x: int, chunk_y: int, seed: int, config) -> Tuple[np.nd
     # Get terrain height (in world coords) for each x column
     terrain_height_mesh = terrain_world_y[xx]
 
-    # SUPER FAST material assignment with water!
+    # SUPER FAST material assignment!
     # Calculate depth below surface
     depth_below_surface = world_yy - terrain_height_mesh
 
-    # Water level - lakes form in areas below this level
-    water_level = base_ground_level - 50  # Water only in very deep valleys (Y=50)
+    # Water only in the deepest valleys (terrain much lower than base level)
+    is_deep_valley = (terrain_height_mesh < base_ground_level - 45)  # Only deepest areas
 
     # Determine biome types
-    is_water_area = (terrain_height_mesh < water_level)  # Deep valleys = water
-    is_beach_area = (terrain_height_mesh < base_ground_level - 40) & ~is_water_area  # Sandy beaches near water
+    is_beach_area = (terrain_height_mesh < base_ground_level - 35)  # Sandy areas in low valleys
 
     # Material layers:
-    # - Air/Water above surface (water in valleys)
-    # - Surface (depth 0): GRASS on land, SAND on beaches
+    # - Air above surface
+    # - Surface (depth 0): GRASS on land, SAND in low valleys
     # - Shallow (1-2 blocks): DIRT or SAND
+    # - If in deep valley floor, add small water pools
     # - Medium (2-8 blocks): DIRT
     # - Deep (8+ blocks): STONE
 
-    # Water fills valleys: above terrain surface AND at/below water level
-    is_water = (world_yy < terrain_height_mesh) & (world_yy >= water_level)
-
+    # Create base terrain
     blocks = np.where(
-        is_water, BLOCK_WATER,  # Water in valleys
+        world_yy < terrain_height_mesh, BLOCK_AIR,  # Air above terrain
         np.where(
-            world_yy < terrain_height_mesh, BLOCK_AIR,  # Air above terrain (and above water)
+            depth_below_surface == 0,  # Surface layer
+            np.where(is_beach_area, BLOCK_SAND, BLOCK_GRASS),  # Sand in valleys, grass on hills
             np.where(
-                depth_below_surface == 0,  # Surface layer
-                np.where(is_beach_area, BLOCK_SAND, BLOCK_GRASS),  # Sand beaches, grass hills
-                np.where(
-                    depth_below_surface < 2,
-                    np.where(is_beach_area, BLOCK_SAND, BLOCK_DIRT),  # Sand/dirt subsurface
-                    np.where(depth_below_surface < 8, BLOCK_DIRT, BLOCK_STONE)  # Dirt then stone
-                )
+                depth_below_surface < 2,
+                np.where(is_beach_area, BLOCK_SAND, BLOCK_DIRT),  # Sand/dirt subsurface
+                np.where(depth_below_surface < 8, BLOCK_DIRT, BLOCK_STONE)  # Dirt then stone
             )
         )
     )
+
+    # Add small water pools ONLY in deepest valley floors
+    # Water appears 1-3 blocks deep in valley floor
+    water_pool_mask = is_deep_valley & (depth_below_surface >= 1) & (depth_below_surface <= 3)
+    blocks = np.where(water_pool_mask, BLOCK_WATER, blocks)
 
     return blocks, entities
 

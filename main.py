@@ -314,6 +314,14 @@ class CartesiaGame:
         self.mouse_down = False
         self.right_mouse_down = False
 
+        # Rain system
+        import random
+        self.raining = False
+        self.rain_timer = 0.0
+        self.rain_spawn_timer = 0.0
+        self.rain_toggle_timer = random.uniform(10, 30)  # Random rain intervals
+        self.random = random
+
         # Running
         self.running = True
 
@@ -687,6 +695,38 @@ class CartesiaGame:
                 print(f"PLACED {self.current_material} at ({world_x},{world_y}), active chunks: {len(self.active_chunks)}")
                 self._last_place_frame = pygame.time.get_ticks()
 
+        # Update rain system
+        self.rain_timer += dt
+        if self.rain_timer >= self.rain_toggle_timer:
+            # Toggle rain on/off
+            self.raining = not self.raining
+            self.rain_timer = 0.0
+            if self.raining:
+                self.rain_toggle_timer = self.random.uniform(15, 45)  # Rain for 15-45 seconds
+            else:
+                self.rain_toggle_timer = self.random.uniform(30, 90)  # No rain for 30-90 seconds
+
+        # Spawn rain droplets
+        if self.raining:
+            self.rain_spawn_timer += dt
+            if self.rain_spawn_timer >= 0.05:  # Spawn every 0.05 seconds (20 drops/sec)
+                self.rain_spawn_timer = 0.0
+                # Spawn water near top of visible area
+                camera_top_y = int(self.camera_y - self.height // 2)
+                spawn_y = max(0, camera_top_y - 50)
+                # Random X position across screen width
+                camera_left_x = int(self.camera_x - self.width // 2)
+                camera_right_x = int(self.camera_x + self.width // 2)
+                for _ in range(3):  # Spawn 3 drops at a time
+                    spawn_x = self.random.randint(max(0, camera_left_x),
+                                                   min(self.sand.grid_width * self.sand.cell_size - 1, camera_right_x))
+                    grid_x = spawn_x // self.sand.cell_size
+                    grid_y = spawn_y // self.sand.cell_size
+                    if 0 <= grid_x < self.sand.grid_width and 0 <= grid_y < self.sand.grid_height:
+                        if self.sand.cells[grid_x, grid_y] == Material.AIR:
+                            self.sand.cells[grid_x, grid_y] = Material.WATER
+                            self.sand.active[grid_x, grid_y] = True
+
         # Update falling sand simulation at 30 FPS (performance boost!)
         if not hasattr(self, '_sand_timer'):
             self._sand_timer = 0.0
@@ -788,6 +828,7 @@ class CartesiaGame:
 
         info = [
             f"FPS: {int(self.clock.get_fps())}",
+            f"Weather: {'RAINING' if self.raining else 'Clear'}",
             f"Position: ({int(self.player.x)}, {int(self.player.y)})",
             f"Player Chunk: ({player_chunk_x}, {player_chunk_y})",
             f"Material: {material_names[self.current_material]} (1-5)",
