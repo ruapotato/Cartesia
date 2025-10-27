@@ -190,6 +190,18 @@ def update_fluid_jit(cells, active, x, y, frame, grid_width, grid_height):
             active[x - 1, y] = True
             return True
 
+    # Before deactivating, check if there's air below (even not directly adjacent)
+    # Keep water active if there's any air below so it will eventually spill and fall
+    if y + 1 < grid_height:
+        # Check directly below
+        if cells[x, y + 1] == 0:
+            return True  # Keep active, will fall next frame
+        # Check if sitting on an edge - check diagonals for potential fall paths
+        if x > 0 and cells[x - 1, y + 1] == 0:
+            return True  # Can potentially fall diagonally
+        if x < grid_width - 1 and cells[x + 1, y + 1] == 0:
+            return True  # Can potentially fall diagonally
+
     active[x, y] = False
     return False
 
