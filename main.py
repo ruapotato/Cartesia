@@ -210,13 +210,13 @@ class CartesiaGame:
         # Physics engine for player
         self.physics = SandPhysicsEngine(self.sand)
 
-        # Start player in center of world, near ground level
+        # Start player in center of world, above ground level
         spawn_x = world_width // 2
-        # Ground is at 70% of world height, spawn slightly above it
-        spawn_y = int(world_height * 0.65)  # Spawn just above ground, will fall to surface
+        # Ground is at world Y=50 (see generation.py), spawn above it
+        spawn_y = int(30 * self.sand.cell_size)  # Spawn above surface, will fall down
 
         # Setup terrain generator for on-demand generation
-        from cartesia.world.generation import TerrainGenerator
+        from cartesia.world.generation import TerrainGenerator, generate_chunk as generate_terrain_chunk
         self.terrain_generator = TerrainGenerator(self.config.world.seed, self.config)
 
         # Track which chunks are generated
@@ -412,7 +412,7 @@ class CartesiaGame:
         self.chunk_queue.extend(normal_chunks)
 
     def _generate_chunk(self, chunk_x: int, chunk_y: int):
-        """Generate a single chunk of terrain - SUPER FAST flat world!"""
+        """Generate a single chunk of terrain using Perlin noise!"""
         # Calculate grid coordinates for this chunk
         start_grid_x = chunk_x * self.chunk_size
         start_grid_y = chunk_y * self.chunk_size
@@ -425,25 +425,14 @@ class CartesiaGame:
         if start_grid_x < 0 or start_grid_y < 0:
             return
 
-        chunk_width = end_grid_x - start_grid_x
-        chunk_height = end_grid_y - start_grid_y
+        # Use Perlin noise generation for interesting terrain!
+        from cartesia.world.generation import generate_chunk as generate_terrain_chunk
+        blocks, entities = generate_terrain_chunk(chunk_x, chunk_y, self.config.world.seed, self.config)
 
-        # FLAT WORLD GENERATION - BLAZING FAST!
-        # Ground level is at 70% of world height
-        ground_level = int(self.sand.grid_height * 0.7)
-
-        # FULLY VECTORIZED - no loops!
-        # Create y coordinate meshgrid
-        grid_y_coords = np.arange(start_grid_y, end_grid_y)
-        grid_y_mesh = np.broadcast_to(grid_y_coords, (chunk_width, chunk_height))
-
-        # Vectorized material assignment based on y coordinate
-        materials = np.full((chunk_width, chunk_height), Material.STONE, dtype=np.int8)
-        materials[grid_y_mesh < ground_level] = Material.DIRT
-        materials[grid_y_mesh < ground_level - 5] = Material.AIR
-
-        # Assign to grid
-        self.sand.cells[start_grid_x:end_grid_x, start_grid_y:end_grid_y] = materials
+        # Assign blocks to sand grid (blocks are already in correct Material enum values)
+        actual_width = end_grid_x - start_grid_x
+        actual_height = end_grid_y - start_grid_y
+        self.sand.cells[start_grid_x:end_grid_x, start_grid_y:end_grid_y] = blocks[:actual_width, :actual_height]
 
         # DON'T activate immediately - only activate if all neighbors are loaded
         # This prevents materials from falling into ungenerated chunks!
@@ -453,7 +442,8 @@ class CartesiaGame:
         # Try to activate this chunk (if neighbors are loaded)
         self._activate_chunk_if_safe(chunk_x, chunk_y)
 
-        # Flat world chunks are pre-settled, no need to mark as active
+        # Perlin terrain needs to settle, so mark as active if it has surface blocks
+        # (This will be handled by player interaction)
 
         # Also check all neighbors - they might now have all their neighbors!
         for dy in [-1, 0, 1]:

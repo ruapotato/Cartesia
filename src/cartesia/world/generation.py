@@ -7,14 +7,15 @@ from typing import Tuple, List
 import numpy as np
 from perlin_noise import PerlinNoise
 import random
+from ..engine.falling_sand import Material
 
 
-# Block type constants
-BLOCK_AIR = 1
-BLOCK_GRASS = 2
-BLOCK_DIRT = 3
-BLOCK_STONE = 4
-BLOCK_TORCH = 5
+# Material type constants (using the Material enum)
+BLOCK_AIR = Material.AIR
+BLOCK_GRASS = Material.DIRT  # Grass renders as dirt for now
+BLOCK_DIRT = Material.DIRT
+BLOCK_STONE = Material.STONE
+BLOCK_SAND = Material.SAND
 
 
 class TerrainGenerator:
@@ -78,7 +79,7 @@ class TerrainGenerator:
 
 def generate_chunk(chunk_x: int, chunk_y: int, seed: int, config) -> Tuple[np.ndarray, List[dict]]:
     """
-    Generate a chunk of terrain.
+    Generate a chunk of terrain - SUPER FAST heightmap version!
 
     Args:
         chunk_x, chunk_y: Chunk coordinates
@@ -94,62 +95,39 @@ def generate_chunk(chunk_x: int, chunk_y: int, seed: int, config) -> Tuple[np.nd
     world_x_start = chunk_x * size
     world_y_start = chunk_y * size
 
-    # Initialize generator
-    generator = TerrainGenerator(seed, config)
+    # FAST: Generate heightmap for entire chunk at once (1D noise along x-axis only!)
+    # This is WAY faster than per-block Perlin noise
+    noise = PerlinNoise(octaves=4, seed=seed)
+
+    # Vectorized heightmap generation
+    world_x_coords = np.arange(world_x_start, world_x_start + size)
+    heights = np.array([noise(x / 100.0) for x in world_x_coords])  # Simple 1D heightmap
+
+    # Convert noise (-1 to 1) to WORLD Y coordinates (not chunk-relative!)
+    # Ground level should be around a fixed world Y position
+    base_ground_level = 50  # Fixed world Y coordinate for average ground level
+    terrain_world_y = (base_ground_level + heights * 30).astype(np.int32)  # +/- 30 blocks variation
 
     # Create blocks array: blocks[local_x, local_y]
-    blocks = np.zeros((size, size), dtype=np.int32)
+    blocks = np.full((size, size), BLOCK_AIR, dtype=np.int32)
     entities = []
 
-    tree_plant_rate = 5.0
+    # FULLY VECTORIZED terrain generation - NO LOOPS!
+    # Create meshgrid of coordinates
+    local_y_coords = np.arange(size)
+    local_x_coords = np.arange(size)
+    xx, yy = np.meshgrid(local_x_coords, local_y_coords, indexing='ij')
 
-    # First pass: generate all blocks
-    depth_map = {}
-    for local_y in range(size):
-        for local_x in range(size):
-            world_x = world_x_start + local_x
-            world_y = world_y_start + local_y
-            depth = generator.get_solid_depth_at(world_x, world_y)
-            depth_map[(local_x, local_y)] = depth
+    # Convert local Y to world Y for comparison
+    world_yy = world_y_start + yy
 
-    # Second pass: determine block types with proper layering
-    for local_y in range(size):
-        for local_x in range(size):
-            world_x = world_x_start + local_x
-            world_y = world_y_start + local_y
+    # Get terrain height (in world coords) for each x column
+    terrain_height_mesh = terrain_world_y[xx]
 
-            depth = depth_map[(local_x, local_y)]
-            crazyness = generator.get_crazyness_at(world_x, world_y)
-
-            # Check if block above is air (for grass placement)
-            depth_above = depth_map.get((local_x, local_y - 1), 0)
-            is_surface = depth > 0 and depth_above == 0
-
-            # Determine block type based on depth
-            if depth <= 0:
-                # Air
-                blocks[local_x, local_y] = BLOCK_AIR
-
-            elif is_surface and 0 < depth < 3:
-                # Grass (surface block with air above)
-                blocks[local_x, local_y] = BLOCK_GRASS
-
-                # Plant trees on flat areas
-                if crazyness < 10:
-                    tree_chance = random.randint(0, 1000000) / 10000
-                    if tree_chance <= tree_plant_rate:
-                        entities.append({
-                            "init_tree": [local_x, local_y]
-                        })
-                        blocks[local_x, local_y] = BLOCK_DIRT
-
-            elif 0 < depth < 3:
-                # Dirt (shallow underground)
-                blocks[local_x, local_y] = BLOCK_DIRT
-
-            else:
-                # Stone (deep underground)
-                blocks[local_x, local_y] = BLOCK_STONE
+    # Vectorized material assignment based on depth below surface
+    # Air above ground, then 6 blocks of dirt, then stone
+    blocks = np.where(world_yy < terrain_height_mesh, BLOCK_AIR,
+             np.where(world_yy < terrain_height_mesh + 6, BLOCK_DIRT, BLOCK_STONE))
 
     return blocks, entities
 
