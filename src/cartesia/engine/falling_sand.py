@@ -127,13 +127,32 @@ def update_fluid_jit(cells, active, x, y, frame, grid_width, grid_height):
     """JIT-compiled fluid update - BLAZING FAST!"""
     material = cells[x, y]
 
-    # Try fall down
-    if y + 1 < grid_height and cells[x, y + 1] == 0:
-        cells[x, y] = 0
-        cells[x, y + 1] = material
-        active[x, y] = True
-        active[x, y + 1] = True
-        return True
+    # Try fall down (water falls through air)
+    if y + 1 < grid_height:
+        below = cells[x, y + 1]
+        if below == 0:  # Air - just fall
+            cells[x, y] = 0
+            cells[x, y + 1] = material
+            active[x, y] = True
+            active[x, y + 1] = True
+            return True
+
+    # Try fall diagonally down if can't fall straight
+    if y + 1 < grid_height:
+        # Try down-left
+        if x > 0 and cells[x - 1, y + 1] == 0:
+            cells[x, y] = 0
+            cells[x - 1, y + 1] = material
+            active[x, y] = True
+            active[x - 1, y + 1] = True
+            return True
+        # Try down-right
+        if x < grid_width - 1 and cells[x + 1, y + 1] == 0:
+            cells[x, y] = 0
+            cells[x + 1, y + 1] = material
+            active[x, y] = True
+            active[x + 1, y + 1] = True
+            return True
 
     # Try spread horizontally (alternating pattern)
     if frame % 2 == 0:
@@ -193,10 +212,10 @@ def update_simulation_jit_bounded(cells, active, frame, grid_width, grid_height,
                 continue
 
             # Update based on material type
-            if material == 3 or material == 2:  # Sand or Dirt
+            if material == 3 or material == 2 or material == 6:  # Sand, Dirt, or Grass
                 if update_powder_jit(cells, active, x, y, frame, grid_width, grid_height):
                     dirty = True
-            elif material == 4:  # Water
+            elif material == 4 or material == 5:  # Water or Lava
                 if update_fluid_jit(cells, active, x, y, frame, grid_width, grid_height):
                     dirty = True
 
