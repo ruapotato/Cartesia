@@ -130,11 +130,11 @@ def generate_chunk(chunk_x: int, chunk_y: int, seed: int, config) -> Tuple[np.nd
     depth_below_surface = world_yy - terrain_height_mesh
 
     # Water level - lakes form in areas below this level
-    water_level = base_ground_level - 40  # Water only in deep valleys (Y=60)
+    water_level = base_ground_level - 50  # Water only in very deep valleys (Y=50)
 
     # Determine biome types
     is_water_area = (terrain_height_mesh < water_level)  # Deep valleys = water
-    is_beach_area = (terrain_height_mesh < base_ground_level - 30) & ~is_water_area  # Sandy beaches near water
+    is_beach_area = (terrain_height_mesh < base_ground_level - 40) & ~is_water_area  # Sandy beaches near water
 
     # Material layers:
     # - Air/Water above surface (water in valleys)
@@ -143,10 +143,13 @@ def generate_chunk(chunk_x: int, chunk_y: int, seed: int, config) -> Tuple[np.nd
     # - Medium (2-8 blocks): DIRT
     # - Deep (8+ blocks): STONE
 
+    # Water fills valleys: above terrain surface AND at/below water level
+    is_water = (world_yy < terrain_height_mesh) & (world_yy >= water_level)
+
     blocks = np.where(
-        world_yy < water_level, BLOCK_WATER,  # Water fills to water level
+        is_water, BLOCK_WATER,  # Water in valleys
         np.where(
-            world_yy < terrain_height_mesh, BLOCK_AIR,  # Air above terrain but below water level
+            world_yy < terrain_height_mesh, BLOCK_AIR,  # Air above terrain (and above water)
             np.where(
                 depth_below_surface == 0,  # Surface layer
                 np.where(is_beach_area, BLOCK_SAND, BLOCK_GRASS),  # Sand beaches, grass hills

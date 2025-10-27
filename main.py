@@ -30,6 +30,9 @@ class SandPhysicsEngine:
 
     def update(self, body: PhysicsBody, dt: float) -> None:
         """Update physics with pixel-perfect collision."""
+        # Check if player is in water
+        in_water = self._check_in_water(body)
+
         # Update timers
         if not body.on_ground:
             body.coyote_timer -= dt
@@ -45,10 +48,10 @@ class SandPhysicsEngine:
             body.jump_pressed = False
 
         # Apply horizontal movement
-        self._apply_horizontal_movement(body, dt)
+        self._apply_horizontal_movement(body, dt, in_water)
 
         # Apply gravity and jumping
-        self._apply_gravity_and_jump(body, dt)
+        self._apply_gravity_and_jump(body, dt, in_water)
 
         # Move and handle collision
         self._move_with_collision(body, dt)
@@ -59,9 +62,13 @@ class SandPhysicsEngine:
         elif body.move_input > 0:
             body.facing = 1
 
-    def _apply_horizontal_movement(self, body: PhysicsBody, dt: float) -> None:
+    def _apply_horizontal_movement(self, body: PhysicsBody, dt: float, in_water: bool = False) -> None:
         """Apply horizontal acceleration and friction."""
-        if body.on_ground:
+        if in_water:
+            # Swimming - slower movement with high friction
+            acceleration = body.config.air_acceleration * 0.7
+            friction = body.config.ground_friction * 1.5
+        elif body.on_ground:
             acceleration = body.config.ground_acceleration
             friction = body.config.ground_friction
         else:
@@ -80,33 +87,50 @@ class SandPhysicsEngine:
                 body.vx = 0
 
         # Clamp to max speed
-        body.vx = max(-body.config.max_run_speed, min(body.config.max_run_speed, body.vx))
+        max_speed = body.config.max_run_speed * 0.6 if in_water else body.config.max_run_speed
+        body.vx = max(-max_speed, min(max_speed, body.vx))
 
-    def _apply_gravity_and_jump(self, body: PhysicsBody, dt: float) -> None:
+    def _apply_gravity_and_jump(self, body: PhysicsBody, dt: float, in_water: bool = False) -> None:
         """Apply gravity and handle jumping."""
-        # Check if we should execute a buffered jump
-        if body.jump_buffer_timer > 0 and body.can_jump():
-            body.vy = -body.config.jump_speed  # Negative = up in screen coords
-            body.jump_buffer_timer = 0
-            body.coyote_timer = 0
-            body.on_ground = False
+        if in_water:
+            # Swimming mechanics
+            if body.jump_buffer_timer > 0:
+                # Swim up
+                body.vy = -body.config.jump_speed * 0.5  # Slower swim up
+                body.jump_buffer_timer = 0
 
-        # Apply gravity (positive = down in screen coords)
-        if body.vy < 0 and body.jump_held:
-            # Holding jump = lower gravity (higher jump)
-            gravity = body.config.jump_hold_gravity
+            # Reduced gravity in water (buoyancy)
+            gravity = body.config.jump_hold_gravity * 0.2
+            body.vy += gravity * dt
+
+            # Clamp swim speed (slower than falling)
+            body.vy = max(-body.config.jump_speed * 0.5, min(body.config.max_fall_speed * 0.3, body.vy))
+
         else:
-            # Not holding jump or falling = higher gravity (fast fall)
-            gravity = body.config.jump_release_gravity
+            # Normal land/air physics
+            # Check if we should execute a buffered jump
+            if body.jump_buffer_timer > 0 and body.can_jump():
+                body.vy = -body.config.jump_speed  # Negative = up in screen coords
+                body.jump_buffer_timer = 0
+                body.coyote_timer = 0
+                body.on_ground = False
 
-        body.vy += gravity * dt
+            # Apply gravity (positive = down in screen coords)
+            if body.vy < 0 and body.jump_held:
+                # Holding jump = lower gravity (higher jump)
+                gravity = body.config.jump_hold_gravity
+            else:
+                # Not holding jump or falling = higher gravity (fast fall)
+                gravity = body.config.jump_release_gravity
 
-        # Jump cut (release jump to fall faster)
-        if not body.jump_held and body.vy < -body.config.jump_cut_speed:
-            body.vy = -body.config.jump_cut_speed
+            body.vy += gravity * dt
 
-        # Clamp fall speed
-        body.vy = min(body.config.max_fall_speed, body.vy)
+            # Jump cut (release jump to fall faster)
+            if not body.jump_held and body.vy < -body.config.jump_cut_speed:
+                body.vy = -body.config.jump_cut_speed
+
+            # Clamp fall speed
+            body.vy = min(body.config.max_fall_speed, body.vy)
 
     def _move_with_collision(self, body: PhysicsBody, dt: float) -> None:
         """Move body and handle pixel-perfect collision."""
@@ -170,6 +194,25 @@ class SandPhysicsEngine:
                 return True
 
         return False
+
+    def _check_in_water(self, body: PhysicsBody) -> bool:
+        """Check if player is submerged in water."""
+        # Sample center of player hitbox
+        center_x = int(body.center_x)
+        center_y = int(body.center_y)
+
+        # Convert to grid coordinates
+        grid_x = center_x // self.sand.cell_size
+        grid_y = center_y // self.sand.cell_size
+
+        # Check bounds
+        if grid_x < 0 or grid_x >= self.sand.grid_width:
+            return False
+        if grid_y < 0 or grid_y >= self.sand.grid_height:
+            return False
+
+        # Check if current cell is water
+        return self.sand.cells[grid_x, grid_y] == Material.WATER
 
 
 class CartesiaGame:
@@ -727,6 +770,7 @@ class CartesiaGame:
             Material.WATER: "Water",
             Material.STONE: "Stone",
             Material.LAVA: "Lava",
+            Material.GRASS: "Grass",
         }
 
         # Count active cells for performance monitoring
