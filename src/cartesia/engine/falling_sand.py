@@ -18,6 +18,7 @@ class Material(IntEnum):
     SAND = 3
     WATER = 4
     LAVA = 5
+    GRASS = 6  # Grass surface blocks
 
 
 class MaterialProperties:
@@ -31,6 +32,7 @@ class MaterialProperties:
             Material.SAND: (194, 178, 128, 255),  # Tan
             Material.WATER: (50, 100, 200, 200),  # Blue (semi-transparent)
             Material.LAVA: (255, 100, 0, 255),  # Orange-red
+            Material.GRASS: (88, 164, 76, 255),  # Green
         }
 
         # Material density (higher = sinks in lower density materials)
@@ -39,6 +41,7 @@ class MaterialProperties:
             Material.WATER: 1,
             Material.SAND: 2,
             Material.DIRT: 3,
+            Material.GRASS: 3,  # Same as dirt
             Material.STONE: 10,
             Material.LAVA: 1,
         }
@@ -48,6 +51,7 @@ class MaterialProperties:
             Material.AIR: False,
             Material.STONE: False,
             Material.DIRT: True,  # Can fall
+            Material.GRASS: True,  # Falls like dirt when dug
             Material.SAND: True,
             Material.WATER: True,
             Material.LAVA: True,
@@ -58,6 +62,7 @@ class MaterialProperties:
             Material.AIR: False,
             Material.STONE: False,
             Material.DIRT: False,
+            Material.GRASS: False,  # Falls like dirt, not a fluid
             Material.SAND: False,
             Material.WATER: True,  # Spreads horizontally
             Material.LAVA: True,

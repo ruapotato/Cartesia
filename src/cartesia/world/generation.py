@@ -12,10 +12,11 @@ from ..engine.falling_sand import Material
 
 # Material type constants (using the Material enum)
 BLOCK_AIR = Material.AIR
-BLOCK_GRASS = Material.DIRT  # Grass renders as dirt for now
 BLOCK_DIRT = Material.DIRT
 BLOCK_STONE = Material.STONE
 BLOCK_SAND = Material.SAND
+BLOCK_WATER = Material.WATER
+BLOCK_GRASS = Material.GRASS
 
 
 class TerrainGenerator:
@@ -124,26 +125,37 @@ def generate_chunk(chunk_x: int, chunk_y: int, seed: int, config) -> Tuple[np.nd
     # Get terrain height (in world coords) for each x column
     terrain_height_mesh = terrain_world_y[xx]
 
-    # SUPER FAST material assignment!
+    # SUPER FAST material assignment with water!
     # Calculate depth below surface
     depth_below_surface = world_yy - terrain_height_mesh
 
-    # Simple deterministic variety based on position (no extra noise!)
-    # Sand in flat areas (low height variation), dirt on slopes
-    is_sandy = (terrain_height_mesh < base_ground_level - 20)  # Low valleys = sand
+    # Water level - lakes form in areas below this level
+    water_level = base_ground_level - 15  # Water fills valleys
+
+    # Determine biome types
+    is_water_area = (terrain_height_mesh < water_level)  # Deep valleys = water
+    is_beach_area = (terrain_height_mesh < base_ground_level - 10) & ~is_water_area  # Sandy beaches near water
 
     # Material layers:
-    # - Air above surface
-    # - Top 1-2 blocks: SAND in valleys, DIRT on hills
-    # - Next 6 blocks: DIRT
-    # - Deep: STONE
+    # - Air/Water above surface (water in valleys)
+    # - Surface (depth 0): GRASS on land, SAND on beaches
+    # - Shallow (1-2 blocks): DIRT or SAND
+    # - Medium (2-8 blocks): DIRT
+    # - Deep (8+ blocks): STONE
 
     blocks = np.where(
-        depth_below_surface < 0, BLOCK_AIR,
+        world_yy < water_level, BLOCK_WATER,  # Water fills to water level
         np.where(
-            depth_below_surface < 2,
-            np.where(is_sandy, BLOCK_SAND, BLOCK_DIRT),  # Sand in valleys
-            np.where(depth_below_surface < 8, BLOCK_DIRT, BLOCK_STONE)  # Dirt then stone
+            world_yy < terrain_height_mesh, BLOCK_AIR,  # Air above terrain but below water level
+            np.where(
+                depth_below_surface == 0,  # Surface layer
+                np.where(is_beach_area, BLOCK_SAND, BLOCK_GRASS),  # Sand beaches, grass hills
+                np.where(
+                    depth_below_surface < 2,
+                    np.where(is_beach_area, BLOCK_SAND, BLOCK_DIRT),  # Sand/dirt subsurface
+                    np.where(depth_below_surface < 8, BLOCK_DIRT, BLOCK_STONE)  # Dirt then stone
+                )
+            )
         )
     )
 
