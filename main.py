@@ -15,6 +15,7 @@ sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 import pygame
 import numpy as np
+from numba import njit
 from cartesia.config import get_config
 from cartesia.engine.falling_sand import FallingSandEngine, Material
 from cartesia.engine.physics_v2 import PhysicsBody, PhysicsConfig
@@ -140,14 +141,28 @@ class SandPhysicsEngine:
                     body.on_ground = False
 
     def _check_collision_at(self, x: float, y: float, width: float, height: float) -> bool:
-        """Check collision with sand pixels."""
-        # Check corners and edges
+        """Check collision with sand pixels - MORE ROBUST for slopes!"""
+        # Clamp coordinates to world bounds to prevent drift issues
+        max_x = (self.sand.grid_width * self.sand.cell_size) - 1
+        max_y = (self.sand.grid_height * self.sand.cell_size) - 1
+
+        # Check MORE points for better slope handling
         check_points = [
-            (x + 2, y + 2),  # Top-left
-            (x + width - 2, y + 2),  # Top-right
-            (x + 2, y + height - 2),  # Bottom-left
-            (x + width - 2, y + height - 2),  # Bottom-right
-            (x + width/2, y + height - 2),  # Bottom-middle (for ground)
+            # Top edge
+            (max(0, min(x + 2, max_x)), max(0, min(y + 2, max_y))),
+            (max(0, min(x + width/2, max_x)), max(0, min(y + 2, max_y))),
+            (max(0, min(x + width - 2, max_x)), max(0, min(y + 2, max_y))),
+
+            # Bottom edge (MORE POINTS for ground detection!)
+            (max(0, min(x + 2, max_x)), max(0, min(y + height - 1, max_y))),
+            (max(0, min(x + width/4, max_x)), max(0, min(y + height - 1, max_y))),
+            (max(0, min(x + width/2, max_x)), max(0, min(y + height - 1, max_y))),
+            (max(0, min(x + width*3/4, max_x)), max(0, min(y + height - 1, max_y))),
+            (max(0, min(x + width - 2, max_x)), max(0, min(y + height - 1, max_y))),
+
+            # Sides
+            (max(0, min(x + 2, max_x)), max(0, min(y + height/2, max_y))),
+            (max(0, min(x + width - 2, max_x)), max(0, min(y + height/2, max_y))),
         ]
 
         for px, py in check_points:
@@ -199,15 +214,29 @@ class CartesiaGame:
 
         # Track which chunks are generated
         self.generated_chunks = set()
-        self.chunk_size = 150  # Larger chunks = fewer generations
+        self.chunk_size = 32  # Larger chunks work better with vectorization!
+        self.chunk_generation_radius = 12  # Generate further out
 
-        # Terrain generation timer (don't generate every frame!)
-        self.terrain_gen_timer = 0.0
+        # Generate multiple chunks per frame (catch up fast!)
+        self.chunk_queue = []
+        self.chunks_per_frame = 50  # Generate 50 chunks per frame (flat world = BLAZING fast!)
 
-        # Generate initial area around player (fast!)
+        # Generate initial area around player (generate immediately for instant play!)
         print("Generating starting area...")
-        self._generate_chunks_around(spawn_x, spawn_y, radius=2)
-        print("World ready - terrain will generate as you explore!")
+        self._queue_chunks_around(spawn_x, spawn_y)
+
+        # Generate first wave immediately (no waiting!)
+        print(f"  Generating {len(self.chunk_queue)} initial chunks...")
+        chunks_to_generate = min(200, len(self.chunk_queue))  # Generate 200 chunks immediately (flat world = instant!)
+        for i in range(chunks_to_generate):
+            if self.chunk_queue:
+                chunk_x, chunk_y = self.chunk_queue.pop(0)
+                if i % 50 == 0:
+                    print(f"    Generated {i}/{chunks_to_generate}...")
+                self._generate_chunk(chunk_x, chunk_y)
+                self.generated_chunks.add((chunk_x, chunk_y))
+
+        print(f"World ready - {chunks_to_generate} chunks loaded, rest will stream in!")
 
         # Player
         self.player = self._create_player_body(spawn_x, spawn_y)
@@ -228,27 +257,68 @@ class CartesiaGame:
         # Running
         self.running = True
 
-    def _generate_chunks_around(self, center_x: int, center_y: int, radius: int = 2):
-        """Generate terrain chunks around a position."""
+    def _queue_chunks_around(self, center_x: int, center_y: int):
+        """Queue chunks PRIORITIZING direction of movement - prevents falling into ungenerated areas!"""
+        # Don't queue if we already have lots queued (prevents slowdown)
+        if len(self.chunk_queue) > 50:
+            return
+
         # Convert pixel coords to chunk coords
         center_chunk_x = center_x // (self.chunk_size * self.sand.cell_size)
         center_chunk_y = center_y // (self.chunk_size * self.sand.cell_size)
 
-        # Generate chunks in a radius
-        for chunk_y in range(center_chunk_y - radius, center_chunk_y + radius + 1):
-            for chunk_x in range(center_chunk_x - radius, center_chunk_x + radius + 1):
-                chunk_key = (chunk_x, chunk_y)
+        # Determine movement direction for prioritization (only if player exists)
+        if hasattr(self, 'player'):
+            falling = self.player.vy > 100  # Falling fast
+            moving_right = self.player.vx > 50
+            moving_left = self.player.vx < -50
+        else:
+            # Initial generation - prioritize below
+            falling = True
+            moving_right = False
+            moving_left = False
 
-                # Skip if already generated
-                if chunk_key in self.generated_chunks:
-                    continue
+        # Priority chunks (in direction of movement)
+        priority_chunks = []
+        normal_chunks = []
 
-                # Generate this chunk
-                self._generate_chunk(chunk_x, chunk_y)
-                self.generated_chunks.add(chunk_key)
+        # Generate in expanding RINGS (spiral outward, ALL chunks!)
+        radius = self.chunk_generation_radius
+        for dist in range(radius + 1):
+            for chunk_y in range(center_chunk_y - dist, center_chunk_y + dist + 1):
+                for chunk_x in range(center_chunk_x - dist, center_chunk_x + dist + 1):
+                    # Skip if not on current ring (except center)
+                    if dist > 0 and abs(chunk_x - center_chunk_x) != dist and abs(chunk_y - center_chunk_y) != dist:
+                        continue
+
+                    chunk_key = (chunk_x, chunk_y)
+
+                    # Skip if already generated or queued
+                    if chunk_key in self.generated_chunks:
+                        continue
+                    if chunk_key in self.chunk_queue:
+                        continue
+
+                    # Prioritize chunks in direction of movement
+                    is_priority = False
+                    if falling and chunk_y > center_chunk_y:  # Below player
+                        is_priority = True
+                    elif moving_right and chunk_x > center_chunk_x:  # To the right
+                        is_priority = True
+                    elif moving_left and chunk_x < center_chunk_x:  # To the left
+                        is_priority = True
+
+                    if is_priority:
+                        priority_chunks.append(chunk_key)
+                    else:
+                        normal_chunks.append(chunk_key)
+
+        # Add priority chunks first, then normal chunks
+        self.chunk_queue.extend(priority_chunks)
+        self.chunk_queue.extend(normal_chunks)
 
     def _generate_chunk(self, chunk_x: int, chunk_y: int):
-        """Generate a single chunk of terrain."""
+        """Generate a single chunk of terrain - SUPER FAST flat world!"""
         # Calculate grid coordinates for this chunk
         start_grid_x = chunk_x * self.chunk_size
         start_grid_y = chunk_y * self.chunk_size
@@ -261,34 +331,29 @@ class CartesiaGame:
         if start_grid_x < 0 or start_grid_y < 0:
             return
 
-        # Generate terrain for this chunk
-        for grid_x in range(start_grid_x, end_grid_x):
-            for grid_y in range(start_grid_y, end_grid_y):
-                # Convert grid coords to world coords
-                world_x = grid_x * self.sand.cell_size / self.config.world.block_size
+        chunk_width = end_grid_x - start_grid_x
+        chunk_height = end_grid_y - start_grid_y
 
-                # FLIP Y AXIS! Screen Y increases downward, but world Y increases upward
-                # Map grid_y so that bottom of screen = high Y values in world space
-                world_y = (self.sand.grid_height - grid_y) * self.sand.cell_size / self.config.world.block_size
+        # FLAT WORLD GENERATION - BLAZING FAST!
+        # Ground level is at 70% of world height
+        ground_level = int(self.sand.grid_height * 0.7)
 
-                # Get depth from Perlin noise
-                depth = self.terrain_generator.get_solid_depth_at(world_x, world_y)
+        # FULLY VECTORIZED - no loops!
+        # Create y coordinate meshgrid
+        grid_y_coords = np.arange(start_grid_y, end_grid_y)
+        grid_y_mesh = np.broadcast_to(grid_y_coords, (chunk_width, chunk_height))
 
-                if depth <= 0:
-                    self.sand.cells[grid_x, grid_y] = Material.AIR
-                elif depth < 0.5:
-                    self.sand.cells[grid_x, grid_y] = Material.DIRT
-                elif depth < 3.0:
-                    self.sand.cells[grid_x, grid_y] = Material.DIRT
-                else:
-                    self.sand.cells[grid_x, grid_y] = Material.STONE
+        # Vectorized material assignment based on y coordinate
+        materials = np.full((chunk_width, chunk_height), Material.STONE, dtype=np.int8)
+        materials[grid_y_mesh < ground_level] = Material.DIRT
+        materials[grid_y_mesh < ground_level - 5] = Material.AIR
 
-        # Mark surface cells as active in this chunk
-        for grid_x in range(start_grid_x, end_grid_x):
-            for grid_y in range(start_grid_y + 1, end_grid_y):
-                if self.sand.cells[grid_x, grid_y] != Material.AIR:
-                    if grid_y > 0 and self.sand.cells[grid_x, grid_y - 1] == Material.AIR:
-                        self.sand.active[grid_x, grid_y] = True
+        # Assign to grid
+        self.sand.cells[start_grid_x:end_grid_x, start_grid_y:end_grid_y] = materials
+
+        # Mark entire chunk as active - simulation will deactivate stable cells quickly
+        # This ensures spawned dirt/sand will fall!
+        self.sand.active[start_grid_x:end_grid_x, start_grid_y:end_grid_y] = True
 
     def _create_player_body(self, x: float, y: float) -> PhysicsBody:
         """Create player physics body."""
@@ -375,6 +440,12 @@ class CartesiaGame:
         # Update physics
         self.physics.update(self.player, dt)
 
+        # Clamp player position to world bounds (prevents collision issues at edges)
+        world_max_x = (self.sand.grid_width * self.sand.cell_size) - self.player.width
+        world_max_y = (self.sand.grid_height * self.sand.cell_size) - self.player.height
+        self.player.x = max(0, min(self.player.x, world_max_x))
+        self.player.y = max(0, min(self.player.y, world_max_y))
+
         # Update player animation
         self.player_animation.update(dt, self.player.vx, self.player.vy, self.player.on_ground)
 
@@ -385,17 +456,27 @@ class CartesiaGame:
         self.camera_x += (target_camera_x - self.camera_x) * 0.1
         self.camera_y += (target_camera_y - self.camera_y) * 0.1
 
-        # Generate terrain around player as they explore (but not every frame!)
-        self.terrain_gen_timer += dt
-        if self.terrain_gen_timer >= 0.2:  # Generate every 0.2 seconds (5 times per second)
-            self._generate_chunks_around(int(self.player.center_x), int(self.player.center_y), radius=2)
-            self.terrain_gen_timer = 0.0
+        # Queue new chunks around player (Bastion-style terrain building!)
+        self._queue_chunks_around(int(self.player.center_x), int(self.player.center_y))
+
+        # Generate multiple chunks per frame (fast catch-up!)
+        for _ in range(self.chunks_per_frame):
+            if self.chunk_queue:
+                chunk_x, chunk_y = self.chunk_queue.pop(0)
+                self._generate_chunk(chunk_x, chunk_y)
+                self.generated_chunks.add((chunk_x, chunk_y))
 
         # Mining/placing with mouse
         mouse_x, mouse_y = pygame.mouse.get_pos()
 
         # Convert screen coords to world coords (accounting for camera)
+        # X is straightforward
         world_x = int(mouse_x - self.width // 2 + self.camera_x)
+
+        # Y needs careful handling - mouse_y increases downward, but we rendered with flipped Y
+        # World coordinates: Y increases upward from bottom
+        # Screen coordinates: Y increases downward from top
+        # The sand is rendered with camera, so just offset by camera position
         world_y = int(mouse_y - self.height // 2 + self.camera_y)
 
         if self.mouse_down:
@@ -407,12 +488,12 @@ class CartesiaGame:
             self.sand.spawn_circle(world_x, world_y, self.brush_size, self.current_material)
             self.sand.dirty = True
 
-        # Update falling sand simulation at 60 FPS (half rendering rate for performance!)
+        # Update falling sand simulation at 30 FPS (performance boost!)
         if not hasattr(self, '_sand_timer'):
             self._sand_timer = 0.0
 
         self._sand_timer += dt
-        if self._sand_timer >= 1.0 / 60.0:  # 60 physics updates per second
+        if self._sand_timer >= 1.0 / 30.0:  # 30 physics updates per second
             self.sand.update(self._sand_timer)
             self._sand_timer = 0.0
 
@@ -441,6 +522,12 @@ class CartesiaGame:
         # Render UI
         self.render_ui()
 
+        # Draw cursor indicator (helps debug mouse alignment!)
+        mouse_x, mouse_y = pygame.mouse.get_pos()
+        pygame.draw.circle(self.screen, (255, 255, 0), (mouse_x, mouse_y), 5, 2)
+        pygame.draw.line(self.screen, (255, 255, 0), (mouse_x - 10, mouse_y), (mouse_x + 10, mouse_y), 2)
+        pygame.draw.line(self.screen, (255, 255, 0), (mouse_x, mouse_y - 10), (mouse_x, mouse_y + 10), 2)
+
     def render_ui(self):
         """Render UI overlay."""
         font = pygame.font.SysFont("monospace", 14)
@@ -459,6 +546,8 @@ class CartesiaGame:
             f"Position: ({int(self.player.x)}, {int(self.player.y)})",
             f"Material: {material_names[self.current_material]} (1-5)",
             f"On Ground: {self.player.on_ground}",
+            f"Chunks Generated: {len(self.generated_chunks)}",
+            f"Chunks Queued: {len(self.chunk_queue)}",
             "",
             "WASD/Arrows: Move",
             "Space: Jump",
