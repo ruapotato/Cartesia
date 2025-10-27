@@ -195,8 +195,9 @@ class CartesiaGame:
         self.clock = pygame.time.Clock()
 
         # Create large world for exploration (Starbound-style!)
+        # Wide for horizontal exploration, VERY tall for infinite digging!
         world_width = self.width * 4
-        world_height = self.height * 2
+        world_height = self.height * 10  # 10x screen height for deep digging!
 
         print(f"Creating world: {world_width}x{world_height} pixels...")
         self.sand = FallingSandEngine(world_width, world_height, cell_size=2)
@@ -204,9 +205,10 @@ class CartesiaGame:
         # Physics engine for player
         self.physics = SandPhysicsEngine(self.sand)
 
-        # Start player in center of world, middle height
+        # Start player in center of world, near ground level
         spawn_x = world_width // 2
-        spawn_y = world_height // 2  # Start in middle, will fall to ground
+        # Ground is at 70% of world height, spawn slightly above it
+        spawn_y = int(world_height * 0.65)  # Spawn just above ground, will fall to surface
 
         # Setup terrain generator for on-demand generation
         from cartesia.world.generation import TerrainGenerator
