@@ -138,20 +138,20 @@ def generate_chunk(chunk_x: int, chunk_y: int, seed: int, config) -> Tuple[np.nd
 
     # Material layers:
     # - Air above surface
-    # - Surface (depth 0): GRASS on land, SAND in low valleys
-    # - Shallow (1-2 blocks): DIRT or SAND
+    # - Surface (depth 0-2): GRASS on land (thicker grass layer!), SAND in low valleys
+    # - Shallow (3-4 blocks): DIRT or SAND
     # - If in deep valley floor, add small water pools
-    # - Medium (2-8 blocks): DIRT
+    # - Medium (4-8 blocks): DIRT
     # - Deep (8+ blocks): STONE
 
     # Create base terrain
     blocks = np.where(
         world_yy < terrain_height_mesh, BLOCK_AIR,  # Air above terrain
         np.where(
-            depth_below_surface == 0,  # Surface layer
+            depth_below_surface <= 2,  # Thicker grass layer (0-2 blocks deep)
             np.where(is_beach_area, BLOCK_SAND, BLOCK_GRASS),  # Sand in valleys, grass on hills
             np.where(
-                depth_below_surface < 2,
+                depth_below_surface < 4,
                 np.where(is_beach_area, BLOCK_SAND, BLOCK_DIRT),  # Sand/dirt subsurface
                 np.where(depth_below_surface < 8, BLOCK_DIRT, BLOCK_STONE)  # Dirt then stone
             )
