@@ -316,7 +316,7 @@ class CartesiaGame:
 
         # Rain system
         import random
-        self.raining = False
+        self.raining = True  # Start with rain for testing
         self.rain_timer = 0.0
         self.rain_spawn_timer = 0.0
         self.rain_toggle_timer = random.uniform(10, 30)  # Random rain intervals
@@ -695,6 +695,10 @@ class CartesiaGame:
 
         # Update rain system
         self.rain_timer += dt
+        if not hasattr(self, '_rain_debug_done'):
+            print(f"[RAIN] Initial state: raining={self.raining}, timer={self.rain_timer}, toggle_at={self.rain_toggle_timer}")
+            self._rain_debug_done = True
+
         if self.rain_timer >= self.rain_toggle_timer:
             # Toggle rain on/off
             self.raining = not self.raining
@@ -709,18 +713,20 @@ class CartesiaGame:
             self.rain_spawn_timer += dt
             if self.rain_spawn_timer >= 0.2:  # Spawn every 0.2 seconds (5 drops/sec)
                 self.rain_spawn_timer = 0.0
+                print(f"[RAIN] Attempting to spawn rain...")
 
                 # Spawn rain within visible area where chunks are already generated
                 # Get player chunk position
                 player_chunk_x = int(self.player.center_x) // (self.chunk_size * self.sand.cell_size)
                 player_chunk_y = int(self.player.center_y) // (self.chunk_size * self.sand.cell_size)
 
-                # Spawn rain in a chunk near the top of the generation radius
-                spawn_chunk_y = player_chunk_y - self.chunk_generation_radius // 2  # Higher up but within generated area
-                spawn_chunk_x = player_chunk_x + self.random.randint(-self.chunk_generation_radius // 2,
-                                                                       self.chunk_generation_radius // 2)
+                # Spawn rain in visible chunks (player's current chunk or nearby)
+                # Use a small offset upward, but keep it within generated area
+                spawn_chunk_y = max(0, player_chunk_y - 2)  # 2 chunks above player (stays positive!)
+                spawn_chunk_x = player_chunk_x + self.random.randint(-3, 3)  # Nearby chunks
 
                 chunk_key = (spawn_chunk_x, spawn_chunk_y)
+                print(f"[RAIN] Trying chunk {chunk_key} (player at {player_chunk_x},{player_chunk_y}), generated={chunk_key in self.generated_chunks}")
 
                 # Only spawn if chunk is generated
                 if chunk_key in self.generated_chunks:
@@ -736,8 +742,16 @@ class CartesiaGame:
                             self.sand.cells[grid_x, grid_y] = Material.WATER
                             self.sand.active[grid_x, grid_y] = True
 
-                            # Activate the chunk where rain spawns so it falls!
-                            self.active_chunks[chunk_key] = 0
+                            # Activate vertical column of chunks so rain can fall all the way down!
+                            # Activate spawn chunk and all chunks below it
+                            for vertical_offset in range(0, 20):  # Activate 20 chunks down (plenty for rain to fall)
+                                chunk_below = (spawn_chunk_x, spawn_chunk_y + vertical_offset)
+                                if chunk_below in self.generated_chunks:
+                                    self.active_chunks[chunk_below] = 0
+
+                            print(f"[RAIN] Spawned water at grid ({grid_x},{grid_y}) chunk {chunk_key}, active={self.sand.active[grid_x, grid_y]}, material={self.sand.cells[grid_x, grid_y]}")
+                else:
+                    print(f"[RAIN] Chunk {chunk_key} not generated! Total chunks: {len(self.generated_chunks)}")
 
         # Update falling sand simulation at 30 FPS (performance boost!)
         if not hasattr(self, '_sand_timer'):

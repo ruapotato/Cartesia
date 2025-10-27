@@ -13,12 +13,12 @@ from numba import njit
 class Material(IntEnum):
     """Material types for cellular automata."""
     AIR = 0
-    STONE = 1
-    DIRT = 2
+    WATER = 1
+    LAVA = 2
     SAND = 3
-    WATER = 4
-    LAVA = 5
-    GRASS = 6  # Grass surface blocks
+    DIRT = 4
+    GRASS = 5
+    STONE = 6
 
 
 class MaterialProperties:
@@ -26,46 +26,46 @@ class MaterialProperties:
 
     def __init__(self):
         self.colors = {
-            Material.AIR: (0, 0, 0, 0),  # Transparent
-            Material.STONE: (100, 100, 100, 255),  # Gray
-            Material.DIRT: (134, 96, 67, 255),  # Brown
-            Material.SAND: (194, 178, 128, 255),  # Tan
-            Material.WATER: (50, 100, 200, 200),  # Blue (semi-transparent)
-            Material.LAVA: (255, 100, 0, 255),  # Orange-red
-            Material.GRASS: (88, 164, 76, 255),  # Green
+            Material.AIR: (0, 0, 0, 0),  # Transparent - 0
+            Material.WATER: (50, 100, 200, 200),  # Blue (semi-transparent) - 1
+            Material.LAVA: (255, 100, 0, 255),  # Orange-red - 2
+            Material.SAND: (194, 178, 128, 255),  # Tan - 3
+            Material.DIRT: (134, 96, 67, 255),  # Brown - 4
+            Material.GRASS: (88, 164, 76, 255),  # Green - 5
+            Material.STONE: (100, 100, 100, 255),  # Gray - 6
         }
 
         # Material density (higher = sinks in lower density materials)
         self.density = {
-            Material.AIR: 0,
-            Material.WATER: 1,
-            Material.SAND: 2,
-            Material.DIRT: 3,
-            Material.GRASS: 3,  # Same as dirt
-            Material.STONE: 10,
-            Material.LAVA: 1,
+            Material.AIR: 0,      # 0
+            Material.WATER: 1,    # 1
+            Material.LAVA: 1,     # 2
+            Material.SAND: 2,     # 3
+            Material.DIRT: 3,     # 4
+            Material.GRASS: 3,    # 5 - Same as dirt
+            Material.STONE: 10,   # 6
         }
 
         # Can material move?
         self.movable = {
-            Material.AIR: False,
-            Material.STONE: False,
-            Material.DIRT: True,  # Can fall
-            Material.GRASS: True,  # Falls like dirt when dug
-            Material.SAND: True,
-            Material.WATER: True,
-            Material.LAVA: True,
+            Material.AIR: False,     # 0
+            Material.WATER: True,    # 1
+            Material.LAVA: True,     # 2
+            Material.SAND: True,     # 3
+            Material.DIRT: True,     # 4 - Can fall
+            Material.GRASS: False,   # 5 - Sticks like stone
+            Material.STONE: False,   # 6
         }
 
         # How material moves
         self.fluid = {
-            Material.AIR: False,
-            Material.STONE: False,
-            Material.DIRT: False,
-            Material.GRASS: False,  # Falls like dirt, not a fluid
-            Material.SAND: False,
-            Material.WATER: True,  # Spreads horizontally
-            Material.LAVA: True,
+            Material.AIR: False,     # 0
+            Material.WATER: True,    # 1 - Spreads horizontally
+            Material.LAVA: True,     # 2 - Spreads horizontally
+            Material.SAND: False,    # 3
+            Material.DIRT: False,    # 4
+            Material.GRASS: False,   # 5 - Falls like dirt, not a fluid
+            Material.STONE: False,   # 6
         }
 
 
@@ -81,8 +81,16 @@ def update_powder_jit(cells, active, x, y, frame, grid_width, grid_height):
 
     below = cells[x, y + 1]
 
-    # Try fall down (0 = AIR, 1 = STONE)
-    if below == 0 or (material > below and below != 1):
+    # Material densities (hardcoded for JIT performance)
+    # AIR=0, WATER=1, LAVA=1, SAND=2, DIRT=3, GRASS=3, STONE=10
+    density_map = [0, 1, 1, 2, 3, 3, 10]  # Index by material ID
+
+    material_density = density_map[material]
+    below_density = density_map[below]
+
+    # Try fall down (heavier materials sink through lighter ones)
+    # Stone (density 10) never moves
+    if below == 0 or (material_density > below_density and below != 6):
         cells[x, y] = below
         cells[x, y + 1] = material
         active[x, y] = True
@@ -212,10 +220,10 @@ def update_simulation_jit_bounded(cells, active, frame, grid_width, grid_height,
                 continue
 
             # Update based on material type
-            if material == 3 or material == 2 or material == 6:  # Sand, Dirt, or Grass
+            if material == 3 or material == 4:  # Sand or Dirt (not grass - it's static now)
                 if update_powder_jit(cells, active, x, y, frame, grid_width, grid_height):
                     dirty = True
-            elif material == 4 or material == 5:  # Water or Lava
+            elif material == 1 or material == 2:  # Water or Lava
                 if update_fluid_jit(cells, active, x, y, frame, grid_width, grid_height):
                     dirty = True
 
@@ -521,12 +529,13 @@ class FallingSandEngine:
         grid_surface = pygame.Surface((visible_cells.shape[0], visible_cells.shape[1]))
         pixels = pygame.surfarray.pixels3d(grid_surface)
 
-        # Fast color mapping
-        pixels[visible_cells == 1] = (100, 100, 100)  # Stone
-        pixels[visible_cells == 2] = (134, 96, 67)    # Dirt
+        # Fast color mapping (Material enum: WATER=1, LAVA=2, SAND=3, DIRT=4, GRASS=5, STONE=6)
+        pixels[visible_cells == 1] = (50, 100, 200)   # Water
+        pixels[visible_cells == 2] = (255, 100, 0)    # Lava
         pixels[visible_cells == 3] = (194, 178, 128)  # Sand
-        pixels[visible_cells == 4] = (50, 100, 200)   # Water
-        pixels[visible_cells == 5] = (255, 100, 0)    # Lava
+        pixels[visible_cells == 4] = (134, 96, 67)    # Dirt
+        pixels[visible_cells == 5] = (88, 164, 76)    # Grass
+        pixels[visible_cells == 6] = (100, 100, 100)  # Stone
 
         del pixels
 

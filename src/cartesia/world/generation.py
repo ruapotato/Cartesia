@@ -11,12 +11,13 @@ from ..engine.falling_sand import Material
 
 
 # Material type constants (using the Material enum)
-BLOCK_AIR = Material.AIR
-BLOCK_DIRT = Material.DIRT
-BLOCK_STONE = Material.STONE
-BLOCK_SAND = Material.SAND
-BLOCK_WATER = Material.WATER
-BLOCK_GRASS = Material.GRASS
+# NEW ORDER: AIR=0, WATER=1, LAVA=2, SAND=3, DIRT=4, GRASS=5, STONE=6
+BLOCK_AIR = Material.AIR      # 0
+BLOCK_WATER = Material.WATER  # 1
+BLOCK_SAND = Material.SAND    # 3
+BLOCK_DIRT = Material.DIRT    # 4
+BLOCK_GRASS = Material.GRASS  # 5
+BLOCK_STONE = Material.STONE  # 6
 
 
 class TerrainGenerator:
