@@ -501,6 +501,20 @@ class CartesiaGame:
         self.camera_x += (target_camera_x - self.camera_x) * 0.1
         self.camera_y += (target_camera_y - self.camera_y) * 0.1
 
+        # CRITICAL: Clamp camera to world bounds to match sand rendering!
+        # Camera is at center of screen, so it can't go too close to edges
+        # or the sand rendering will clamp the view and cause coordinate mismatch
+        world_width_pixels = self.sand.grid_width * self.sand.cell_size
+        world_height_pixels = self.sand.grid_height * self.sand.cell_size
+
+        camera_min_x = self.width // 2
+        camera_max_x = world_width_pixels - self.width // 2
+        camera_min_y = self.height // 2
+        camera_max_y = world_height_pixels - self.height // 2
+
+        self.camera_x = max(camera_min_x, min(self.camera_x, camera_max_x))
+        self.camera_y = max(camera_min_y, min(self.camera_y, camera_max_y))
+
         # Queue new chunks around player (Bastion-style terrain building!)
         self._queue_chunks_around(int(self.player.center_x), int(self.player.center_y))
 
