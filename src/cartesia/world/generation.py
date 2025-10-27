@@ -97,16 +97,16 @@ def generate_chunk(chunk_x: int, chunk_y: int, seed: int, config) -> Tuple[np.nd
 
     # FAST: Generate heightmap for entire chunk at once (1D noise along x-axis only!)
     # This is WAY faster than per-block Perlin noise
-    noise = PerlinNoise(octaves=4, seed=seed)
+    noise = PerlinNoise(octaves=5, seed=seed)
 
     # Vectorized heightmap generation
     world_x_coords = np.arange(world_x_start, world_x_start + size)
-    heights = np.array([noise(x / 100.0) for x in world_x_coords])  # Simple 1D heightmap
+    heights = np.array([noise(x / 120.0) for x in world_x_coords])  # Simple 1D heightmap
 
     # Convert noise (-1 to 1) to WORLD Y coordinates (not chunk-relative!)
     # Ground level should be around a fixed world Y position
-    base_ground_level = 50  # Fixed world Y coordinate for average ground level
-    terrain_world_y = (base_ground_level + heights * 30).astype(np.int32)  # +/- 30 blocks variation
+    base_ground_level = 100  # Fixed world Y coordinate for average ground level (higher for mountains)
+    terrain_world_y = (base_ground_level + heights * 50).astype(np.int32)  # +/- 50 blocks variation (big mountains!)
 
     # Create blocks array: blocks[local_x, local_y]
     blocks = np.full((size, size), BLOCK_AIR, dtype=np.int32)
@@ -124,10 +124,28 @@ def generate_chunk(chunk_x: int, chunk_y: int, seed: int, config) -> Tuple[np.nd
     # Get terrain height (in world coords) for each x column
     terrain_height_mesh = terrain_world_y[xx]
 
-    # Vectorized material assignment based on depth below surface
-    # Air above ground, then 6 blocks of dirt, then stone
-    blocks = np.where(world_yy < terrain_height_mesh, BLOCK_AIR,
-             np.where(world_yy < terrain_height_mesh + 6, BLOCK_DIRT, BLOCK_STONE))
+    # SUPER FAST material assignment!
+    # Calculate depth below surface
+    depth_below_surface = world_yy - terrain_height_mesh
+
+    # Simple deterministic variety based on position (no extra noise!)
+    # Sand in flat areas (low height variation), dirt on slopes
+    is_sandy = (terrain_height_mesh < base_ground_level - 20)  # Low valleys = sand
+
+    # Material layers:
+    # - Air above surface
+    # - Top 1-2 blocks: SAND in valleys, DIRT on hills
+    # - Next 6 blocks: DIRT
+    # - Deep: STONE
+
+    blocks = np.where(
+        depth_below_surface < 0, BLOCK_AIR,
+        np.where(
+            depth_below_surface < 2,
+            np.where(is_sandy, BLOCK_SAND, BLOCK_DIRT),  # Sand in valleys
+            np.where(depth_below_surface < 8, BLOCK_DIRT, BLOCK_STONE)  # Dirt then stone
+        )
+    )
 
     return blocks, entities
 

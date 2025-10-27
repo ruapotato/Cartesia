@@ -200,9 +200,9 @@ class CartesiaGame:
         self.time_module = time
 
         # Create large world for exploration (Starbound-style!)
-        # Wide for horizontal exploration, tall enough for deep digging
+        # Wide for horizontal exploration, tall enough for deep digging AND high mountains
         world_width = self.width * 4
-        world_height = self.height * 4  # 4x screen height for deep digging (balanced)
+        world_height = self.height * 8  # 8x screen height for mountains and caves!
 
         print(f"Creating world: {world_width}x{world_height} pixels...")
         self.sand = FallingSandEngine(world_width, world_height, cell_size=6)  # Bigger cells = faster rendering!
@@ -212,8 +212,8 @@ class CartesiaGame:
 
         # Start player in center of world, above ground level
         spawn_x = world_width // 2
-        # Ground is at world Y=50 (see generation.py), spawn above it
-        spawn_y = int(30 * self.sand.cell_size)  # Spawn above surface, will fall down
+        # Ground is at world Y=100 (see generation.py), spawn above it
+        spawn_y = int(70 * self.sand.cell_size)  # Spawn above surface, will fall down
 
         # Setup terrain generator for on-demand generation
         from cartesia.world.generation import TerrainGenerator, generate_chunk as generate_terrain_chunk
