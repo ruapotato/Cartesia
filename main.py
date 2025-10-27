@@ -217,6 +217,9 @@ class CartesiaGame:
         self.chunk_size = 32  # Larger chunks work better with vectorization!
         self.chunk_generation_radius = 12  # Generate further out
 
+        # Track chunks with all neighbors loaded (safe for physics)
+        self.chunks_with_neighbors = set()
+
         # Generate multiple chunks per frame (catch up fast!)
         self.chunk_queue = []
         self.chunks_per_frame = 50  # Generate 50 chunks per frame (flat world = BLAZING fast!)
@@ -256,6 +259,34 @@ class CartesiaGame:
 
         # Running
         self.running = True
+
+    def _has_all_neighbors(self, chunk_x: int, chunk_y: int) -> bool:
+        """Check if a chunk has all 8 neighbors loaded."""
+        for dy in [-1, 0, 1]:
+            for dx in [-1, 0, 1]:
+                if dx == 0 and dy == 0:
+                    continue  # Skip self
+                neighbor = (chunk_x + dx, chunk_y + dy)
+                if neighbor not in self.generated_chunks:
+                    return False
+        return True
+
+    def _activate_chunk_if_safe(self, chunk_x: int, chunk_y: int):
+        """Activate physics in a chunk if it has all neighbors loaded."""
+        if not self._has_all_neighbors(chunk_x, chunk_y):
+            return
+
+        # Mark as having neighbors
+        self.chunks_with_neighbors.add((chunk_x, chunk_y))
+
+        # Calculate grid coordinates
+        start_grid_x = chunk_x * self.chunk_size
+        start_grid_y = chunk_y * self.chunk_size
+        end_grid_x = min(start_grid_x + self.chunk_size, self.sand.grid_width)
+        end_grid_y = min(start_grid_y + self.chunk_size, self.sand.grid_height)
+
+        # Activate entire chunk
+        self.sand.active[start_grid_x:end_grid_x, start_grid_y:end_grid_y] = True
 
     def _queue_chunks_around(self, center_x: int, center_y: int):
         """Queue chunks PRIORITIZING direction of movement - prevents falling into ungenerated areas!"""
@@ -351,9 +382,23 @@ class CartesiaGame:
         # Assign to grid
         self.sand.cells[start_grid_x:end_grid_x, start_grid_y:end_grid_y] = materials
 
-        # Mark entire chunk as active - simulation will deactivate stable cells quickly
-        # This ensures spawned dirt/sand will fall!
-        self.sand.active[start_grid_x:end_grid_x, start_grid_y:end_grid_y] = True
+        # DON'T activate immediately - only activate if all neighbors are loaded
+        # This prevents materials from falling into ungenerated chunks!
+        # Mark as inactive initially
+        self.sand.active[start_grid_x:end_grid_x, start_grid_y:end_grid_y] = False
+
+        # Try to activate this chunk (if neighbors are loaded)
+        self._activate_chunk_if_safe(chunk_x, chunk_y)
+
+        # Also check all neighbors - they might now have all their neighbors!
+        for dy in [-1, 0, 1]:
+            for dx in [-1, 0, 1]:
+                if dx == 0 and dy == 0:
+                    continue  # Skip self (already checked)
+                neighbor_chunk = (chunk_x + dx, chunk_y + dy)
+                if neighbor_chunk in self.generated_chunks:
+                    # Try to activate this neighbor if it now has all neighbors
+                    self._activate_chunk_if_safe(neighbor_chunk[0], neighbor_chunk[1])
 
     def _create_player_body(self, x: float, y: float) -> PhysicsBody:
         """Create player physics body."""
@@ -547,6 +592,7 @@ class CartesiaGame:
             f"Material: {material_names[self.current_material]} (1-5)",
             f"On Ground: {self.player.on_ground}",
             f"Chunks Generated: {len(self.generated_chunks)}",
+            f"Chunks Active: {len(self.chunks_with_neighbors)}",
             f"Chunks Queued: {len(self.chunk_queue)}",
             "",
             "WASD/Arrows: Move",
