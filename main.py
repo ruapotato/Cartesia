@@ -707,7 +707,7 @@ class CartesiaGame:
         # Spawn rain droplets
         if self.raining:
             self.rain_spawn_timer += dt
-            if self.rain_spawn_timer >= 0.05:  # Spawn every 0.05 seconds (20 drops/sec)
+            if self.rain_spawn_timer >= 0.2:  # Spawn every 0.2 seconds (5 drops/sec)
                 self.rain_spawn_timer = 0.0
                 # Spawn water near top of visible area
                 camera_top_y = int(self.camera_y - self.height // 2)
@@ -715,7 +715,7 @@ class CartesiaGame:
                 # Random X position across screen width
                 camera_left_x = int(self.camera_x - self.width // 2)
                 camera_right_x = int(self.camera_x + self.width // 2)
-                for _ in range(3):  # Spawn 3 drops at a time
+                for _ in range(1):  # Spawn 1 drop at a time
                     spawn_x = self.random.randint(max(0, camera_left_x),
                                                    min(self.sand.grid_width * self.sand.cell_size - 1, camera_right_x))
                     grid_x = spawn_x // self.sand.cell_size
