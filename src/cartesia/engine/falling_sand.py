@@ -163,18 +163,20 @@ def update_fluid_jit(cells, active, x, y, frame, grid_width, grid_height):
 
 
 @njit(cache=True)
-def update_simulation_jit(cells, active, frame, grid_width, grid_height):
+def update_simulation_jit_bounded(cells, active, frame, grid_width, grid_height, min_x, max_x, min_y, max_y):
     """
-    JIT-compiled main simulation loop - MAXIMUM PERFORMANCE!
+    JIT-compiled main simulation loop - BOUNDED for MAXIMUM PERFORMANCE!
 
-    This replaces the entire Python update loop with compiled code.
+    Only iterates the bounding box of active cells, not the entire world!
     """
     offset = frame % 2
     dirty = False
 
-    # Scan from bottom to top
-    for y in range(grid_height - 2, 0, -1):
-        for x in range(offset, grid_width - 1, 2):
+    # Scan from bottom to top OF ACTIVE REGION ONLY!
+    for y in range(max_y, min_y, -1):
+        # Start at correct offset within bounds
+        start_x = min_x if min_x % 2 == offset else min_x + 1
+        for x in range(start_x, max_x, 2):
             if not active[x, y]:
                 continue
 
@@ -265,13 +267,37 @@ class FallingSandEngine:
         """
         self.frame += 1
 
-        # Call JIT-compiled simulation update (10-100x faster than Python!)
-        dirty = update_simulation_jit(
+        # Count active cells first
+        active_count = np.count_nonzero(self.active)
+        if active_count == 0:
+            # No active cells = no work to do!
+            print(f"[SAND] No active cells, skipping physics")
+            return
+
+        print(f"[SAND] {active_count} active cells, finding bounds...")
+
+        # Find bounding box of active cells - MASSIVE optimization!
+        active_indices = np.argwhere(self.active)
+
+        min_y = max(1, active_indices[:, 1].min() - 2)  # Add padding for propagation
+        max_y = min(self.grid_height - 1, active_indices[:, 1].max() + 2)
+        min_x = max(0, active_indices[:, 0].min() - 2)
+        max_x = min(self.grid_width - 1, active_indices[:, 0].max() + 2)
+
+        bounds_size = (max_x - min_x) * (max_y - min_y)
+        print(f"[SAND] Bounds: x=[{min_x},{max_x}] y=[{min_y},{max_y}] size={bounds_size} cells")
+
+        # Call JIT-compiled simulation update ONLY on active region!
+        dirty = update_simulation_jit_bounded(
             self.cells,
             self.active,
             self.frame,
             self.grid_width,
-            self.grid_height
+            self.grid_height,
+            min_x,
+            max_x,
+            min_y,
+            max_y
         )
 
         if dirty:
