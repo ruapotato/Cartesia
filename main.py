@@ -727,6 +727,13 @@ class CartesiaGame:
                             self.sand.cells[grid_x, grid_y] = Material.WATER
                             self.sand.active[grid_x, grid_y] = True
 
+                            # Activate the chunk where rain spawns so it falls!
+                            chunk_x = grid_x // self.chunk_size
+                            chunk_y = grid_y // self.chunk_size
+                            chunk_key = (chunk_x, chunk_y)
+                            if chunk_key in self.generated_chunks:
+                                self.active_chunks[chunk_key] = 0
+
         # Update falling sand simulation at 30 FPS (performance boost!)
         if not hasattr(self, '_sand_timer'):
             self._sand_timer = 0.0
