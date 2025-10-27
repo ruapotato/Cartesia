@@ -301,18 +301,12 @@ class CartesiaGame:
         chunk_x = grid_x // self.chunk_size
         chunk_y = grid_y // self.chunk_size
 
-        print(f"[REACTIVATE] World pos ({world_x}, {world_y}) -> Chunk ({chunk_x}, {chunk_y})")
-
         # Mark this chunk and all 8 neighbors as recently modified
-        activated_count = 0
         for dy in [-1, 0, 1]:
             for dx in [-1, 0, 1]:
                 neighbor_chunk = (chunk_x + dx, chunk_y + dy)
                 if neighbor_chunk in self.chunks_with_neighbors:
                     self.recently_modified_chunks[neighbor_chunk] = 0
-                    activated_count += 1
-
-        print(f"[REACTIVATE] Activated {activated_count} chunks, total modified: {len(self.recently_modified_chunks)}")
 
     def _update_physics_simulation_area(self, player_chunk_x: int, player_chunk_y: int):
         """Only activate physics on recently modified chunks near player!"""
@@ -328,14 +322,10 @@ class CartesiaGame:
             if self.recently_modified_chunks[chunk_key] > self.chunk_activity_duration:
                 chunks_to_remove.append(chunk_key)
 
-        if chunks_to_remove:
-            print(f"[PHYSICS] Removing {len(chunks_to_remove)} expired chunks")
-
         for chunk_key in chunks_to_remove:
             del self.recently_modified_chunks[chunk_key]
 
         # Second pass: Activate ONLY recently modified chunks near player
-        activated_chunks = 0
         for chunk_y in range(player_chunk_y - radius, player_chunk_y + radius + 1):
             for chunk_x in range(player_chunk_x - radius, player_chunk_x + radius + 1):
                 chunk_key = (chunk_x, chunk_y)
@@ -358,10 +348,6 @@ class CartesiaGame:
 
                 # Activate entire chunk for physics simulation
                 self.sand.active[start_grid_x:end_grid_x, start_grid_y:end_grid_y] = True
-                activated_chunks += 1
-
-        if activated_chunks > 0 or len(self.recently_modified_chunks) > 0:
-            print(f"[PHYSICS] Player chunk ({player_chunk_x}, {player_chunk_y}), modified={len(self.recently_modified_chunks)}, activated={activated_chunks}")
 
     def _queue_chunks_around(self, center_x: int, center_y: int):
         """Queue chunks PRIORITIZING direction of movement - prevents falling into ungenerated areas!"""
@@ -541,8 +527,6 @@ class CartesiaGame:
 
     def update(self, dt: float):
         """Update game state."""
-        t_start = self.time_module.perf_counter()
-
         # Player input
         keys = pygame.key.get_pressed()
 
@@ -641,31 +625,17 @@ class CartesiaGame:
 
         self._sand_timer += dt
         if self._sand_timer >= 1.0 / 30.0:  # 30 physics updates per second
-            t_physics_start = self.time_module.perf_counter()
-            # Run physics simulation (no expensive tracking!)
+            # Run physics simulation
             self.sand.update(self._sand_timer)
-            t_physics_end = self.time_module.perf_counter()
-            physics_time_ms = (t_physics_end - t_physics_start) * 1000
-            print(f"[PERF] Sand physics took {physics_time_ms:.2f}ms")
             self._sand_timer = 0.0
-
-        t_update_end = self.time_module.perf_counter()
-        update_time_ms = (t_update_end - t_start) * 1000
-        if update_time_ms > 5.0:  # Only print if update takes > 5ms
-            print(f"[PERF] Total update took {update_time_ms:.2f}ms")
 
     def render(self):
         """Render everything."""
-        self.t_render_start = self.time_module.perf_counter()
-
         # Clear
         self.screen.fill((135, 206, 235))  # Sky blue
 
         # Render falling sand world with camera following player
-        t_sand_render_start = self.time_module.perf_counter()
         self.sand.render(self.screen, self.camera_x, self.camera_y, 1.0)
-        t_sand_render_end = self.time_module.perf_counter()
-        self.sand_render_time = (t_sand_render_end - t_sand_render_start) * 1000
 
         # Render player at center of screen (camera follows)
         player_screen_x = int(self.player.center_x - self.camera_x + self.width // 2)
@@ -741,11 +711,6 @@ class CartesiaGame:
             self.screen.blit(shadow, (11, y + 1))
             self.screen.blit(text, (10, y))
             y += 20
-
-        t_render_end = self.time_module.perf_counter()
-        total_render_time = (t_render_end - self.t_render_start) * 1000
-        if total_render_time > 10.0:  # Print if render takes > 10ms
-            print(f"[PERF] Render: sand={self.sand_render_time:.2f}ms, total={total_render_time:.2f}ms")
 
 
 if __name__ == "__main__":

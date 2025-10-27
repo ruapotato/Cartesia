@@ -271,10 +271,7 @@ class FallingSandEngine:
         active_count = np.count_nonzero(self.active)
         if active_count == 0:
             # No active cells = no work to do!
-            print(f"[SAND] No active cells, skipping physics")
             return
-
-        print(f"[SAND] {active_count} active cells, finding bounds...")
 
         # Find bounding box of active cells - MASSIVE optimization!
         active_indices = np.argwhere(self.active)
@@ -283,9 +280,6 @@ class FallingSandEngine:
         max_y = min(self.grid_height - 1, active_indices[:, 1].max() + 2)
         min_x = max(0, active_indices[:, 0].min() - 2)
         max_x = min(self.grid_width - 1, active_indices[:, 0].max() + 2)
-
-        bounds_size = (max_x - min_x) * (max_y - min_y)
-        print(f"[SAND] Bounds: x=[{min_x},{max_x}] y=[{min_y},{max_y}] size={bounds_size} cells")
 
         # Call JIT-compiled simulation update ONLY on active region!
         dirty = update_simulation_jit_bounded(
