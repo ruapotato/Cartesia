@@ -225,6 +225,11 @@ class CartesiaGame:
         # Track chunks with all neighbors loaded (safe for physics)
         self.chunks_with_neighbors = set()
 
+        # Chunk settling system - chunks become static when nothing moves
+        self.dynamic_chunks = set()  # Chunks with active physics
+        self.chunk_settle_timers = {}  # Frames since last movement per chunk
+        self.chunk_settle_threshold = 60  # Frames before chunk becomes static (2 seconds at 30 FPS physics)
+
         # Generate multiple chunks per frame (catch up fast!)
         self.chunk_queue = []
         self.chunks_per_frame = 50  # Generate 50 chunks per frame (flat world = BLAZING fast!)
@@ -284,21 +289,40 @@ class CartesiaGame:
         # Mark as having neighbors (safe for physics, but not necessarily active)
         self.chunks_with_neighbors.add((chunk_x, chunk_y))
 
+    def _reactivate_chunk_at_position(self, world_x: int, world_y: int):
+        """Reactivate chunk and neighbors when player interacts (mines/places)."""
+        # Convert world position to chunk coordinates
+        grid_x = world_x // self.sand.cell_size
+        grid_y = world_y // self.sand.cell_size
+        chunk_x = grid_x // self.chunk_size
+        chunk_y = grid_y // self.chunk_size
+
+        # Reactivate this chunk and all 8 neighbors
+        for dy in [-1, 0, 1]:
+            for dx in [-1, 0, 1]:
+                neighbor_chunk = (chunk_x + dx, chunk_y + dy)
+                if neighbor_chunk in self.chunks_with_neighbors:
+                    self.dynamic_chunks.add(neighbor_chunk)
+                    self.chunk_settle_timers[neighbor_chunk] = 0
+
     def _update_physics_simulation_area(self, player_chunk_x: int, player_chunk_y: int):
-        """Only activate physics on chunks near the player - MASSIVE performance boost!"""
+        """Only activate physics on DYNAMIC chunks near player - MASSIVE performance boost!"""
         radius = self.physics_simulation_radius
 
         # First pass: Deactivate ALL chunks
         self.sand.active.fill(False)
 
-        # Second pass: Activate only chunks near player that have neighbors
+        # Second pass: Activate ONLY dynamic chunks near player
+        chunks_to_check = []
         for chunk_y in range(player_chunk_y - radius, player_chunk_y + radius + 1):
             for chunk_x in range(player_chunk_x - radius, player_chunk_x + radius + 1):
                 chunk_key = (chunk_x, chunk_y)
 
-                # Only activate if chunk has all neighbors (safe) and is generated
-                if chunk_key not in self.chunks_with_neighbors:
+                # Only process dynamic chunks (still settling)
+                if chunk_key not in self.dynamic_chunks:
                     continue
+
+                chunks_to_check.append(chunk_key)
 
                 # Calculate grid coordinates
                 start_grid_x = chunk_x * self.chunk_size
@@ -314,6 +338,8 @@ class CartesiaGame:
 
                 # Activate entire chunk for physics simulation
                 self.sand.active[start_grid_x:end_grid_x, start_grid_y:end_grid_y] = True
+
+        return chunks_to_check
 
     def _queue_chunks_around(self, center_x: int, center_y: int):
         """Queue chunks PRIORITIZING direction of movement - prevents falling into ungenerated areas!"""
@@ -417,6 +443,12 @@ class CartesiaGame:
         # Try to activate this chunk (if neighbors are loaded)
         self._activate_chunk_if_safe(chunk_x, chunk_y)
 
+        # Mark new chunk as DYNAMIC - needs physics simulation to settle
+        chunk_key = (chunk_x, chunk_y)
+        if chunk_key in self.chunks_with_neighbors:
+            self.dynamic_chunks.add(chunk_key)
+            self.chunk_settle_timers[chunk_key] = 0
+
         # Also check all neighbors - they might now have all their neighbors!
         for dy in [-1, 0, 1]:
             for dx in [-1, 0, 1]:
@@ -426,6 +458,10 @@ class CartesiaGame:
                 if neighbor_chunk in self.generated_chunks:
                     # Try to activate this neighbor if it now has all neighbors
                     self._activate_chunk_if_safe(neighbor_chunk[0], neighbor_chunk[1])
+                    # Neighbor might now be safe, mark as dynamic
+                    if neighbor_chunk in self.chunks_with_neighbors:
+                        self.dynamic_chunks.add(neighbor_chunk)
+                        self.chunk_settle_timers[neighbor_chunk] = 0
 
     def _create_player_body(self, x: float, y: float) -> PhysicsBody:
         """Create player physics body."""
@@ -552,10 +588,10 @@ class CartesiaGame:
                 self._generate_chunk(chunk_x, chunk_y)
                 self.generated_chunks.add((chunk_x, chunk_y))
 
-        # Update physics simulation area - only simulate near player!
+        # Update physics simulation area - only simulate DYNAMIC chunks near player!
         player_chunk_x = int(self.player.center_x) // (self.chunk_size * self.sand.cell_size)
         player_chunk_y = int(self.player.center_y) // (self.chunk_size * self.sand.cell_size)
-        self._update_physics_simulation_area(player_chunk_x, player_chunk_y)
+        chunks_to_check = self._update_physics_simulation_area(player_chunk_x, player_chunk_y)
 
         # Mining/placing with mouse
         mouse_x, mouse_y = pygame.mouse.get_pos()
@@ -574,10 +610,14 @@ class CartesiaGame:
             # Mine (destroy sand)
             self.sand.spawn_circle(world_x, world_y, self.brush_size, Material.AIR)
             self.sand.dirty = True
+            # Reactivate affected chunks
+            self._reactivate_chunk_at_position(world_x, world_y)
         elif self.right_mouse_down:
             # Place
             self.sand.spawn_circle(world_x, world_y, self.brush_size, self.current_material)
             self.sand.dirty = True
+            # Reactivate affected chunks
+            self._reactivate_chunk_at_position(world_x, world_y)
 
         # Update falling sand simulation at 30 FPS (performance boost!)
         if not hasattr(self, '_sand_timer'):
@@ -585,8 +625,40 @@ class CartesiaGame:
 
         self._sand_timer += dt
         if self._sand_timer >= 1.0 / 30.0:  # 30 physics updates per second
-            self.sand.update(self._sand_timer)
+            # Store active state before update to detect movement
+            active_before = self.sand.active.copy()
+
+            # Run physics simulation
+            had_movement = self.sand.update(self._sand_timer)
             self._sand_timer = 0.0
+
+            # Check which dynamic chunks had movement and update settle timers
+            for chunk_key in chunks_to_check:
+                chunk_x, chunk_y = chunk_key
+
+                # Calculate grid coordinates
+                start_grid_x = chunk_x * self.chunk_size
+                start_grid_y = chunk_y * self.chunk_size
+                end_grid_x = min(start_grid_x + self.chunk_size, self.sand.grid_width)
+                end_grid_y = min(start_grid_y + self.chunk_size, self.sand.grid_height)
+
+                # Check if any cells in this chunk moved
+                chunk_had_movement = np.any(
+                    active_before[start_grid_x:end_grid_x, start_grid_y:end_grid_y] !=
+                    self.sand.active[start_grid_x:end_grid_x, start_grid_y:end_grid_y]
+                )
+
+                if chunk_had_movement:
+                    # Reset settle timer
+                    self.chunk_settle_timers[chunk_key] = 0
+                else:
+                    # Increment settle timer
+                    self.chunk_settle_timers[chunk_key] = self.chunk_settle_timers.get(chunk_key, 0) + 1
+
+                    # Check if chunk has settled
+                    if self.chunk_settle_timers[chunk_key] >= self.chunk_settle_threshold:
+                        # Mark as static (remove from dynamic set)
+                        self.dynamic_chunks.discard(chunk_key)
 
     def render(self):
         """Render everything."""
@@ -633,8 +705,9 @@ class CartesiaGame:
         }
 
         # Count active cells for performance monitoring
-        active_chunks_simulated = (self.physics_simulation_radius * 2 + 1) ** 2
         active_cells = np.count_nonzero(self.sand.active)
+        dynamic_count = len(self.dynamic_chunks)
+        static_count = len(self.chunks_with_neighbors) - dynamic_count
 
         info = [
             f"FPS: {int(self.clock.get_fps())}",
@@ -642,8 +715,8 @@ class CartesiaGame:
             f"Material: {material_names[self.current_material]} (1-5)",
             f"On Ground: {self.player.on_ground}",
             f"Chunks Generated: {len(self.generated_chunks)}",
-            f"Chunks Safe: {len(self.chunks_with_neighbors)}",
-            f"Chunks Simulating: ~{active_chunks_simulated}",
+            f"Dynamic Chunks: {dynamic_count}",
+            f"Static Chunks: {static_count}",
             f"Active Cells: {active_cells}",
             "",
             "WASD/Arrows: Move",
