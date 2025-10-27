@@ -1,0 +1,14 @@
+res://godot/world.tscn
+res://img/atlas.png
+res://godot/world.gd
+res://godot/player.tscn
+res://godot/player.gd
+res://godot/equipment/equipment.gd
+res://godot/equipment/melee_weapon.gd
+res://godot/equipment/shield.gd
+res://godot/equipment/wooden_sword.gd
+res://godot/equipment/wooden_sword.tscn
+res://godot/equipment/wooden_shield.gd
+res://godot/equipment/wooden_shield.tscn
+res://addons/LPCAnimatedSprite/LPCEnum.gd
+res://addons/LPCAnimatedSprite/LPCBase.gd

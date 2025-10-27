@@ -179,24 +179,35 @@ class CartesiaGame:
         pygame.display.set_caption("Cartesia - Noita meets Starbound!")
         self.clock = pygame.time.Clock()
 
-        # Create world (screen size for fast generation - will expand later!)
-        world_width = self.width
-        world_height = self.height
+        # Create large world for exploration (Starbound-style!)
+        world_width = self.width * 4
+        world_height = self.height * 2
 
         print(f"Creating world: {world_width}x{world_height} pixels...")
         self.sand = FallingSandEngine(world_width, world_height, cell_size=2)
 
-        # Generate simple terrain for now (fast!)
-        print("Generating simple terrain...")
-        self._generate_simple_terrain()
-        print("World ready!")
-
         # Physics engine for player
         self.physics = SandPhysicsEngine(self.sand)
 
-        # Find spawn point (surface in middle of world)
+        # Start player in center of world, middle height
         spawn_x = world_width // 2
-        spawn_y = self._find_surface(spawn_x)
+        spawn_y = world_height // 2  # Start in middle, will fall to ground
+
+        # Setup terrain generator for on-demand generation
+        from cartesia.world.generation import TerrainGenerator
+        self.terrain_generator = TerrainGenerator(self.config.world.seed, self.config)
+
+        # Track which chunks are generated
+        self.generated_chunks = set()
+        self.chunk_size = 150  # Larger chunks = fewer generations
+
+        # Terrain generation timer (don't generate every frame!)
+        self.terrain_gen_timer = 0.0
+
+        # Generate initial area around player (fast!)
+        print("Generating starting area...")
+        self._generate_chunks_around(spawn_x, spawn_y, radius=2)
+        print("World ready - terrain will generate as you explore!")
 
         # Player
         self.player = self._create_player_body(spawn_x, spawn_y)
@@ -217,54 +228,67 @@ class CartesiaGame:
         # Running
         self.running = True
 
-    def _generate_simple_terrain(self):
-        """Generate simple terrain quickly - flat ground with some platforms."""
-        # Bottom layer - stone (in grid coordinates)
-        ground_level = self.sand.grid_height - 100
+    def _generate_chunks_around(self, center_x: int, center_y: int, radius: int = 2):
+        """Generate terrain chunks around a position."""
+        # Convert pixel coords to chunk coords
+        center_chunk_x = center_x // (self.chunk_size * self.sand.cell_size)
+        center_chunk_y = center_y // (self.chunk_size * self.sand.cell_size)
 
-        print(f"  Grid size: {self.sand.grid_width}x{self.sand.grid_height}")
-        print(f"  Cell size: {self.sand.cell_size} pixels")
-        print(f"  Ground at grid_y={ground_level}, pixel_y={ground_level * self.sand.cell_size}")
+        # Generate chunks in a radius
+        for chunk_y in range(center_chunk_y - radius, center_chunk_y + radius + 1):
+            for chunk_x in range(center_chunk_x - radius, center_chunk_x + radius + 1):
+                chunk_key = (chunk_x, chunk_y)
 
-        for x in range(self.sand.grid_width):
-            # Ground layer
-            for y in range(ground_level, self.sand.grid_height):
-                depth = y - ground_level
-                if depth < 5:
-                    self.sand.cells[x, y] = Material.DIRT
+                # Skip if already generated
+                if chunk_key in self.generated_chunks:
+                    continue
+
+                # Generate this chunk
+                self._generate_chunk(chunk_x, chunk_y)
+                self.generated_chunks.add(chunk_key)
+
+    def _generate_chunk(self, chunk_x: int, chunk_y: int):
+        """Generate a single chunk of terrain."""
+        # Calculate grid coordinates for this chunk
+        start_grid_x = chunk_x * self.chunk_size
+        start_grid_y = chunk_y * self.chunk_size
+        end_grid_x = min(start_grid_x + self.chunk_size, self.sand.grid_width)
+        end_grid_y = min(start_grid_y + self.chunk_size, self.sand.grid_height)
+
+        # Skip if out of bounds
+        if start_grid_x >= self.sand.grid_width or start_grid_y >= self.sand.grid_height:
+            return
+        if start_grid_x < 0 or start_grid_y < 0:
+            return
+
+        # Generate terrain for this chunk
+        for grid_x in range(start_grid_x, end_grid_x):
+            for grid_y in range(start_grid_y, end_grid_y):
+                # Convert grid coords to world coords
+                world_x = grid_x * self.sand.cell_size / self.config.world.block_size
+
+                # FLIP Y AXIS! Screen Y increases downward, but world Y increases upward
+                # Map grid_y so that bottom of screen = high Y values in world space
+                world_y = (self.sand.grid_height - grid_y) * self.sand.cell_size / self.config.world.block_size
+
+                # Get depth from Perlin noise
+                depth = self.terrain_generator.get_solid_depth_at(world_x, world_y)
+
+                if depth <= 0:
+                    self.sand.cells[grid_x, grid_y] = Material.AIR
+                elif depth < 0.5:
+                    self.sand.cells[grid_x, grid_y] = Material.DIRT
+                elif depth < 3.0:
+                    self.sand.cells[grid_x, grid_y] = Material.DIRT
                 else:
-                    self.sand.cells[x, y] = Material.STONE
+                    self.sand.cells[grid_x, grid_y] = Material.STONE
 
-        # Add some platforms
-        for x in range(100, 200):
-            for y in range(ground_level - 100, ground_level - 95):
-                if 0 <= y < self.sand.grid_height:
-                    self.sand.cells[x, y] = Material.DIRT
-
-        for x in range(300, 400):
-            for y in range(ground_level - 150, ground_level - 145):
-                if 0 <= y < self.sand.grid_height:
-                    self.sand.cells[x, y] = Material.STONE
-
-        # Mark surface cells as active
-        self.sand.active.fill(False)
-        for x in range(self.sand.grid_width):
-            for y in range(1, self.sand.grid_height - 1):
-                if self.sand.cells[x, y] != Material.AIR:
-                    if self.sand.cells[x, y - 1] == Material.AIR:
-                        self.sand.active[x, y] = True
-
-        print(f"  Ground level: grid_y={ground_level}, pixel_y={ground_level * self.sand.cell_size}")
-
-    def _find_surface(self, x: int) -> int:
-        """Find the surface Y coordinate at a given X position."""
-        # Search from top down for first solid block
-        grid_x = x // self.sand.cell_size
-        for grid_y in range(0, self.sand.grid_height):
-            if self.sand.cells[grid_x, grid_y] != Material.AIR:
-                # Found surface - return pixel coordinate
-                return grid_y * self.sand.cell_size - 60
-        return 100  # Default if no surface found
+        # Mark surface cells as active in this chunk
+        for grid_x in range(start_grid_x, end_grid_x):
+            for grid_y in range(start_grid_y + 1, end_grid_y):
+                if self.sand.cells[grid_x, grid_y] != Material.AIR:
+                    if grid_y > 0 and self.sand.cells[grid_x, grid_y - 1] == Material.AIR:
+                        self.sand.active[grid_x, grid_y] = True
 
     def _create_player_body(self, x: float, y: float) -> PhysicsBody:
         """Create player physics body."""
@@ -361,12 +385,18 @@ class CartesiaGame:
         self.camera_x += (target_camera_x - self.camera_x) * 0.1
         self.camera_y += (target_camera_y - self.camera_y) * 0.1
 
+        # Generate terrain around player as they explore (but not every frame!)
+        self.terrain_gen_timer += dt
+        if self.terrain_gen_timer >= 0.2:  # Generate every 0.2 seconds (5 times per second)
+            self._generate_chunks_around(int(self.player.center_x), int(self.player.center_y), radius=2)
+            self.terrain_gen_timer = 0.0
+
         # Mining/placing with mouse
         mouse_x, mouse_y = pygame.mouse.get_pos()
 
-        # Since world is screen-sized, mouse is directly in world coords!
-        world_x = int(mouse_x)
-        world_y = int(mouse_y)
+        # Convert screen coords to world coords (accounting for camera)
+        world_x = int(mouse_x - self.width // 2 + self.camera_x)
+        world_y = int(mouse_y - self.height // 2 + self.camera_y)
 
         if self.mouse_down:
             # Mine (destroy sand)
@@ -391,19 +421,21 @@ class CartesiaGame:
         # Clear
         self.screen.fill((135, 206, 235))  # Sky blue
 
-        # Render falling sand world (no camera offset - world is screen-sized!)
-        self.sand.render(self.screen, self.width // 2, self.height // 2, 1.0)
+        # Render falling sand world with camera following player
+        self.sand.render(self.screen, self.camera_x, self.camera_y, 1.0)
 
-        # Render player at their world position
-        player_screen_x = int(self.player.center_x)
-        player_screen_y = int(self.player.center_y)
+        # Render player at center of screen (camera follows)
+        player_screen_x = int(self.player.center_x - self.camera_x + self.width // 2)
+        player_screen_y = int(self.player.center_y - self.camera_y + self.height // 2)
 
         # Render animated player sprite
         self.player_animation.render(self.screen, player_screen_x, player_screen_y, scale=0.75)
 
         # Debug: Draw player collision box
+        hitbox_x = int(self.player.x - self.camera_x + self.width // 2)
+        hitbox_y = int(self.player.y - self.camera_y + self.height // 2)
         pygame.draw.rect(self.screen, (255, 0, 0),
-                        (int(self.player.x), int(self.player.y),
+                        (hitbox_x, hitbox_y,
                          int(self.player.width), int(self.player.height)), 2)
 
         # Render UI

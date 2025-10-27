@@ -1,0 +1,11 @@
+Node2D
+LPCAnimatedSprite2D
+LPCAnimatedSprite3D
+RayCast2D
+AnimationPlayer
+Sprite2D
+Camera2D
+CollisionShape2D
+CharacterBody2D
+TileMapLayer
+TileMap
